@@ -1,0 +1,53 @@
+/* Modern Color Theme - CSS Variables */
+:root {
+  /* Primary Colors */
+  --primary: #0055a5;
+  --primary-dark: #003b7a;
+  --primary-light: #2b7bbb;
+  --primary-hover: #004a90;
+  
+  /* Accent Colors */
+  --accent: #0072ce;
+  --accent-dark: #005ea6;
+  --accent-light: #5aa7e6;
+  
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-dark: #0f172a;
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-light: #94a3b8;
+  --text-white: #ffffff;
+  
+  /* Border Colors */
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-dark: #94a3b8;
+  
+  /* Status Colors */
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --error: #ef4444;
+  --error-light: #fee2e2;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --info: #1d4ed8;
+  --info-light: #dbeafe;
+  
+  /* Shadow Colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Gradient */
+  --gradient-primary: linear-gradient(135deg, #0055a5 0%, #2b7bbb 100%);
+  --gradient-accent: linear-gradient(135deg, #005ea6 0%, #1d4ed8 100%);
+  --gradient-soft: linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+}
+

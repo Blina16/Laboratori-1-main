@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="48" viewBox="0 0 170 48" role="img" aria-label="SkillForge">
+  <defs>
+    <linearGradient id="g5" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#003b7a"/>
+      <stop offset="100%" stop-color="#2b7bbb"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="6" rx="8" ry="8" width="166" height="36" fill="url(#g5)"/>
+  <text x="85" y="30" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="18" fill="#fff">SkillForge</text>
+</svg>

@@ -1,0 +1,776 @@
+/* ===== Container ===== */
+.menu-dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--bg-secondary);
+  overflow-x: hidden; /* avoid horizontal scroll / clipping */
+}
+
+/* Enforce consistent layout for immediate children */
+.menu-dashboard-container > .sidebar {
+  flex: 0 0 240px; /* fixed sidebar width */
+  max-width: 240px;
+}
+
+.menu-dashboard-container > .main-content {
+  flex: 1 1 auto;
+  min-width: 0; /* allow shrinking to prevent overflow */
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 240px; /* keep in sync with flex-basis above */
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  padding: 30px 20px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar h3 {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar li {
+  padding: 10px 0;
+  cursor: pointer;
+  transition: 0.2s ease;
+  white-space: nowrap;       /* keep on one line */
+  overflow: hidden;          /* hide overflow */
+  text-overflow: ellipsis;   /* show ellipsis when clipped */
+}
+
+.sidebar li:hover {
+  color: var(--accent-light);
+  font-weight: 600;
+  transform: translateX(4px);
+}
+
+/* ===== Main Content ===== */
+.main-content {
+  flex-grow: 1;
+  padding: 40px 30px;
+  min-width: 0; /* allow flex child to shrink without overflow */
+}
+
+/* ===== Tutor Profile ===== */
+.tutor-profile {
+  background-color: var(--bg-primary);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  max-width: 700px;
+  margin: 0 auto;
+  border: 1px solid var(--border-light);
+}
+
+.tutor-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.tutor-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  font-size: 32px;
+  font-weight: 700;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: var(--shadow-md);
+}
+
+.tutor-profile h2 {
+  margin: 0;
+}
+
+.tutor-rating {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* ===== Buttons ===== */
+.book-btn, .pay-btn {
+  margin-top: 15px;
+  padding: 12px 25px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-white);
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.book-btn:hover, .pay-btn:hover {
+  background: var(--gradient-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===== Booking Confirmation ===== */
+.booking-confirmation {
+  margin-top: 12px;
+  font-size: 14px;
+  color: green;
+  font-weight: 500;
+}
+
+/* ===== Date Picker ===== */
+.react-datepicker-wrapper {
+  display: block;
+  margin-bottom: 15px;
+}
+
+.react-datepicker__input-container input {
+  width: 200px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+/* ===== Time Slot Select ===== */
+.time-select {
+  width: 200px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+/* ===== Recurring Checkbox ===== */
+.tutor-profile label {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* ===== Favorites Heart Icon ===== */
+.tutor-rating svg {
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.tutor-rating svg:hover {
+  transform: scale(1.2);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .menu-dashboard-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    padding: 15px 10px;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .react-datepicker__input-container input,
+  .time-select {
+    width: 100%;
+  }
+
+  /* Make tutor list/cards stack nicely on mobile */
+  .tutor-list {
+    gap: 1rem;
+  }
+
+  .tutor-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tutor-img {
+    margin-right: 0;
+    margin-bottom: 8px;
+    width: 72px;
+    height: 72px;
+  }
+
+  /* Buttons easier to tap */
+  .add-button,
+  .view-profile-btn,
+  .remove-button,
+  .google-cal-btn {
+    width: 100%;
+  }
+
+  .inline-add-form {
+    flex-direction: column;
+  }
+
+  /* Admin forms: Students / Grades */
+  .dashboard-container form input,
+  .dashboard-container form select,
+  .dashboard-container form textarea {
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .dashboard-container form button {
+    width: 100%;
+  }
+
+  .booking-actions-list {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  .tutor-img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .booking-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+
+
+.home-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(to bottom right, #f8f9fc, #eef1f7);
+  color: #333;
+}
+
+/* Hero */
+.home-text {
+  text-align: center;
+  margin-top: 60px;
+}
+.home-text h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  gap: 8px;
+}
+.search-input {
+  padding: 10px 14px;
+  width: 250px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.home-btn {
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.home-btn:hover {
+  background-color: #4338ca;
+}
+
+/* Category Boxes */
+.boxes-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin: 40px auto;
+  width: 90%;
+}
+.box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+.box-icon {
+  font-size: 2rem;
+}
+.box-text h3 {
+  font-size: 1.2rem;
+  margin-top: 10px;
+}
+
+/* Tutors Section */
+.tutors-section {
+  width: 90%;
+  text-align: center;
+  margin-top: 60px;
+}
+.tutors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+.tutor-card {
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+.tutor-card:hover {
+  transform: translateY(-5px);
+}
+.tutor-img {
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+}
+.view-profile-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.view-profile-btn:hover {
+  background-color: #1d4ed8;
+}
+
+/* Newsletter */
+.newsletter-section {
+  margin: 60px 0;
+  text-align: center;
+}
+.newsletter-form {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  gap: 10px;
+}
+.newsletter-input {
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 250px;
+}
+.newsletter-btn {
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.newsletter-btn:hover {
+  background-color: #4338ca;
+}
+.newsletter-credit {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 10px;
+}
+
+
+
+
+
+
+
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  background-color: var(--bg-secondary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  width: 250px;
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar h2 {
+  margin-bottom: 1rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin: 0.8rem 0;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sidebar li:hover {
+  text-decoration: underline;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 2rem 3rem;
+  overflow-y: auto;
+}
+
+.section-title {
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Tutor List */
+.tutor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Tutor Cards */
+.tutor-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-primary);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  transition: all 0.3s ease;
+}
+
+.tutor-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-light);
+}
+
+.tutor-img {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 1.5rem;
+}
+
+.tutor-details {
+  flex: 1;
+}
+
+.tutor-details h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.tutor-subject {
+  font-weight: bold;
+  color: var(--primary);
+  margin: 0.3rem 0;
+}
+
+.tutor-bio {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.8rem;
+}
+
+.view-profile-btn {
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+.view-profile-btn:hover {
+  background: var(--gradient-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Favorite (Star) Icon */
+.favorite-icon {
+  cursor: pointer;
+  margin-left: 1rem;
+  transition: transform 0.2s;
+}
+
+.favorite-icon:hover {
+  transform: scale(1.2);
+}
+
+
+/* this is just the testing please only insert here when experimenting with coding*/
+
+.add-button {
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.add-button:hover {
+  background-color: #0369a1;
+}
+
+.inline-add-form {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.inline-add-form input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  flex: 1;
+}
+
+.inline-add-form button {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.inline-add-form button:hover {
+  background-color: #0369a1;
+}
+
+.favorite-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.favorite-icon:hover {
+  transform: scale(1.2);
+}
+
+.remove-button {
+  margin-top: 10px;
+  background-color: #e63946;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.remove-button:hover {
+  background-color: #b02638;
+}
+
+
+
+
+/* i need more testing */
+
+
+.tutor-profile {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.tutor-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.tutor-avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tutor-profile h2 {
+  margin: 0;
+}
+
+.tutor-rating {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/*Another Testing*/
+/* Verified badge */
+.tutor-details svg, .tutor-profile h2 svg {
+  vertical-align: middle;
+}
+
+/* Inline-add form spacing */
+.inline-add-form input, .inline-add-form label {
+  margin-bottom: 8px;
+}
+/* Booking Cards */
+.bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.booking-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.booking-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.booking-header h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.booking-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.booking-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.booking-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.booking-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #374151;
+  font-size: 0.9375rem;
+}
+
+.booking-notes {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.booking-actions-list {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.google-cal-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.google-cal-btn:hover {
+  background: #357ae8;
+}
+
+/* Sidebar icon alignment */
+.sidebar li {
+  display: flex;
+  align-items: center;
+}
