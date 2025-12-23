@@ -1,136 +1,163 @@
-const API_BASE = (() => {
-  const env = process.env.REACT_APP_API_URL;
-  if (env) return env.replace(/\/$/, "");
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') return ""; // CRA proxy
-  if (typeof window !== 'undefined') return window.location.origin;
-  return "";
-})();
+// ===============================
+// API BASE CONFIG
+// ===============================
 
-function getAuthHeaders() {
-  const token = localStorage.getItem("token") || localStorage.getItem("authToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+const API_BASE =
+  process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "";
+
+// Optional dev debug
+if (process.env.NODE_ENV === "development") {
+  console.log("[API_BASE]", API_BASE || "(proxy / same-origin)");
 }
 
-export async function fetchAssignments({ studentId } = {}) {
-  const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : "";
-  const res = await fetch(`${API_BASE}/api/assignments${qs}`, { headers: { ...getAuthHeaders() } });
-  if (!res.ok) throw new Error(`Failed to fetch assignments (${res.status})`);
-  return await res.json();
-}
+// ===============================
+// CORE REQUEST HELPER
+// ===============================
 
-export async function createAssignment(data) {
-  const res = await fetch(`${API_BASE}/api/assignments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to create assignment (${res.status})`);
-  }
-  return await res.json();
-}
+async function request(path, options = {}) {
+  const url = `${API_BASE}${path}`;
 
-export async function updateAssignment(id, data) {
-  const res = await fetch(`${API_BASE}/api/assignments/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Failed to update assignment (${res.status})`);
-  }
-  return await res.json();
-}
-
-export async function deleteAssignment(id) {
-  const res = await fetch(`${API_BASE}/api/assignments/${id}`, {
-    method: 'DELETE',
-    headers: { ...getAuthHeaders() }
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `Failed to delete assignment (${res.status})`);
-  }
-  return true;
-}
-
-const API_BASE = (() => {
-  const env = process.env.REACT_APP_API_URL;
-  if (env) return env.replace(/\/$/, "");
-  if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
-    return "";
-  }
-  if (typeof window !== "undefined") return window.location.origin;
-  return "";
-})();
-
-const FALLBACK_API_BASE = "http://localhost:5000";
-
-function getAuthHeaders() {
-  const token =
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function fetchWithFallback(url, options = {}) {
   try {
-    const res = await fetch(`${API_BASE}${url}`, {
-      ...options,
-      headers: { ...getAuthHeaders(), ...options.headers },
+    const res = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      },
+      ...options
     });
-    return res;
-  } catch (_err) {
-    const res = await fetch(`${FALLBACK_API_BASE}${url}`, {
-      ...options,
-      headers: { ...getAuthHeaders(), ...options.headers },
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    }
+
+    // Safely parse JSON if present
+    const contentType = res.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      return res.json();
+    }
+
+    return null;
+  } catch (err) {
+    console.error("[NETWORK / API ERROR]", {
+      url,
+      message: err.message
     });
-    return res;
+    throw err;
   }
 }
 
-export async function fetchAssignments() {
-  const res = await fetchWithFallback("/api/assignments");
-  if (!res.ok) throw new Error(`Failed to fetch assignments (${res.status})`);
-  return res.json();
-}
+// ===============================
+// GENERIC METHODS
+// ===============================
 
-export async function createAssignment(payload) {
-  const res = await fetchWithFallback("/api/assignments", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to create assignment (${res.status})`);
-  }
-  return res.json();
-}
+const api = {
+  get: (path) => request(path),
+  post: (path, body) =>
+    request(path, { method: "POST", body: JSON.stringify(body) }),
+  put: (path, body) =>
+    request(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: (path) =>
+    request(path, { method: "DELETE" })
+};
 
-export async function updateAssignment(id, payload) {
-  const res = await fetchWithFallback(`/api/assignments/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update assignment (${res.status})`);
-  }
-  return res.json();
-}
+// ===============================
+// TUTORS
+// ===============================
 
-export async function deleteAssignment(id) {
-  const res = await fetchWithFallback(`/api/assignments/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to delete assignment (${res.status})`);
-  }
-  return true;
-}
+export const fetchTutors = () => api.get("/api/tutors");
+
+export const createTutor = (data) =>
+  api.post("/api/tutors", data);
+
+export const updateTutor = (id, data) =>
+  api.put(`/api/tutors/${id}`, data);
+
+export const deleteTutor = (id) =>
+  api.delete(`/api/tutors/${id}`);
+
+// ===============================
+// COURSES
+// ===============================
+
+export const fetchCourses = () => api.get("/api/courses");
+
+export const createCourse = (data) =>
+  api.post("/api/courses", data);
+
+export const updateCourse = (id, data) =>
+  api.put(`/api/courses/${id}`, data);
+
+export const deleteCourse = (id) =>
+  api.delete(`/api/courses/${id}`);
+
+export const getCourseTutors = (courseId) =>
+  api.get(`/api/courses/${courseId}/tutors`);
+
+// ===============================
+// STUDENTS
+// ===============================
+
+export const fetchStudents = () => api.get("/api/students");
+
+export const createStudent = (data) =>
+  api.post("/api/students", data);
+
+export const updateStudent = (id, data) =>
+  api.put(`/api/students/${id}`, data);
+
+export const deleteStudent = (id) =>
+  api.delete(`/api/students/${id}`);
+
+// ===============================
+// GRADES
+// ===============================
+
+export const fetchGrades = () => api.get("/api/grades");
+
+export const createGrade = (data) =>
+  api.post("/api/grades", data);
+
+export const updateGrade = (id, data) =>
+  api.put(`/api/grades/${id}`, data);
+
+export const deleteGrade = (id) =>
+  api.delete(`/api/grades/${id}`);
+
+// ===============================
+// PAYMENTS
+// ===============================
+
+export const fetchPaymentsByStudent = (studentId) =>
+  api.get(`/api/payments/student/${studentId}`);
+
+export const createPayment = (data) =>
+  api.post("/api/payments", data);
+
+export const updatePayment = (id, data) =>
+  api.put(`/api/payments/${id}`, data);
+
+export const deletePayment = (id) =>
+  api.delete(`/api/payments/${id}`);
+
+// ===============================
+// BOOKINGS
+// ===============================
+
+export const getStudentBookings = (studentId) =>
+  api.get(`/api/bookings/student/${studentId}`);
+
+// Google Calendar helper (frontend only)
+export const generateGoogleCalendarUrl = (booking) => {
+  const start = new Date(`${booking.lesson_date}T${booking.lesson_time}`);
+  const end = new Date(start.getTime() + booking.duration * 60000);
+
+  const format = (d) =>
+    d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+  return (
+    "https://www.google.com/calendar/render?action=TEMPLATE" +
+    `&text=Lesson with ${booking.tutor_name}` +
+    `&dates=${format(start)}/${format(end)}`
+  );
+};
