@@ -7,6 +7,7 @@ const coursesRouter = require("./Routes/courses");
 const studentsRouter = require("./Routes/students");
 const gradesRouter = require("./Routes/grades");
 const paymentsRouter = require("./Routes/payments");
+const assignmentsRouter = require("./Routes/assignments");
 
 const app = express();
 app.use(cors({
@@ -28,6 +29,7 @@ app.use("/api/courses", coursesRouter);
 app.use("/api/students", studentsRouter);
 app.use("/api/grades", gradesRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/assignments", assignmentsRouter);
 
 // Health check
 app.get("/", (req, res) => {
