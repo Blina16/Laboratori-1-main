@@ -4,8 +4,8 @@ require('dotenv').config();
 // Use connection pool instead of single connection to prevent "connection closed" errors
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'Blina',
-  password: process.env.DB_PASSWORD || '1234567',
+  user: process.env.DB_USER || 'root123',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'lab111',
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
   waitForConnections: true,
