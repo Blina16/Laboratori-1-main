@@ -40,7 +40,11 @@ function App() {
         {/* Allow Home to render when app is served under /my-react-app */}
         <Route path="/my-react-app" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        {/* Support login when app is served under /my-react-app */}
+        <Route path="/my-react-app/login" element={<Login />} />
         <Route path="/signupform" element={<SignupForm />} />
+        {/* Support signup when app is served under /my-react-app */}
+        <Route path="/my-react-app/signup" element={<SignupForm />} />
         <Route path="/find-tutors" element={<FindTutors />} />
         <Route path="/for-business" element={<ForBusiness />} />
         <Route path="/become-tutor" element={<BecomeTutor />} />
