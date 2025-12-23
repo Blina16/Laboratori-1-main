@@ -161,3 +161,21 @@ export const generateGoogleCalendarUrl = (booking) => {
     `&dates=${format(start)}/${format(end)}`
   );
 };
+
+// ===============================
+// ASSIGNMENTS
+// ===============================
+
+export const fetchAssignments = (studentId) => {
+  if (studentId == null || studentId === "") return api.get("/api/assignments");
+  return api.get(`/api/assignments?studentId=${encodeURIComponent(studentId)}`);
+};
+
+export const createAssignment = (data) =>
+  api.post("/api/assignments", data);
+
+export const updateAssignment = (id, data) =>
+  api.put(`/api/assignments/${id}`, data);
+
+export const deleteAssignment = (id) =>
+  api.delete(`/api/assignments/${id}`);
