@@ -19,7 +19,7 @@ const handleSubmit = async (e) => {
 
   try {
       // Send signup data to backend
-      const response = await axios.post("http://localhost:5000/auth/signup", {
+      const response = await axios.post("/auth/signup", {
         email,
         password,
         name: email.split("@")[0], // or use another field for name
