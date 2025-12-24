@@ -36,5 +36,29 @@ app.get("/", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.use((req, res) => {
+  res.status(404).json({ error: 'NOT_FOUND', message: 'Route not found' });
+});
+
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  console.error('Unhandled error:', err);
+  res.status(status).json({
+    error: status === 500 ? 'INTERNAL_ERROR' : 'ERROR',
+    message,
+    details: process.env.NODE_ENV === 'production' ? undefined : (err.stack || String(err))
+  });
+});
+
 // Start server
-app.listen(5000, () => console.log("Server running on port 5000"));
+const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
