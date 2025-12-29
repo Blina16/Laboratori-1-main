@@ -425,7 +425,7 @@ export default function Dashboard({ isAdmin = false }) {
   const loadAssignments = async () => {
     setAssignmentsLoading(true);
     try {
-      const data = await fetchAssignments(role === "student" ? { studentId } : {});
+      const data = await fetchAssignments(role === "student" ? studentId : "");
       setAssignments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading assignments:", err);
