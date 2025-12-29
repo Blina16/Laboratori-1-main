@@ -10,11 +10,14 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.13.1",
     "lucide-react": "^0.561.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.5",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^6.30.2",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
   },
   "scripts": {
     "predeploy": "npm run build",
@@ -42,5 +45,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3007"
+  "proxy": "http://localhost:5000"
 }
