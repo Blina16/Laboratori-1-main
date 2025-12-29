@@ -2,116 +2,142 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Helpers
-const validStatus = new Set(['pending', 'in_progress', 'submitted', 'graded', 'completed', 'archived']);
-const normalizeStatus = (value) => {
-  if (!value) return 'pending';
-  const lower = String(value).toLowerCase();
-  return validStatus.has(lower) ? lower : null;
-};
+async function resolveStudentId(studentIdentifier) {
+  if (studentIdentifier == null) return null;
+  const raw = String(studentIdentifier);
+  const asNumber = Number(raw);
+  if (Number.isInteger(asNumber) && String(asNumber) === raw) return asNumber;
+  const email = raw.trim().toLowerCase();
+  if (!email) return null;
+  const existing = await db.query('SELECT id FROM students WHERE email = ? LIMIT 1', [email]);
+  if (Array.isArray(existing) && existing.length > 0) return existing[0].id;
+  const name = email.includes('@') ? email.split('@')[0] : 'Student';
+  const created = await db.query('INSERT INTO students (first_name, last_name, email) VALUES (?, ?, ?)', [name, '', email]);
+  return created.insertId;
+}
 
-const normalize = (row) => ({
-  id: row.id,
-  title: row.title,
-  description: row.description || '',
-  status: row.status || 'pending',
-  course_id: row.course_id || null,
-  student_id: row.student_id || null,
-  tutor_id: row.tutor_id || null,
-  due_date: row.due_date || null,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-});
-
-// GET /api/assignments
-// Optional query: ?studentId=... to filter for a student
 router.get('/', async (req, res) => {
   const { studentId } = req.query;
   try {
-    const sql = studentId
-      ? `SELECT id, title, description, status, course_id, student_id, tutor_id, due_date, created_at, updated_at FROM assignments WHERE student_id = ? ORDER BY due_date IS NULL, due_date ASC, created_at DESC`
-      : `SELECT id, title, description, status, course_id, student_id, tutor_id, due_date, created_at, updated_at FROM assignments ORDER BY due_date IS NULL, due_date ASC, created_at DESC`;
-    const rows = await db.query(sql, studentId ? [studentId] : []);
-    res.json(rows.map(normalize));
+    const studentDbId = studentId ? await resolveStudentId(studentId) : null;
+    const sql = `
+      SELECT a.id, a.student_id, s.first_name AS student_first_name, s.last_name AS student_last_name,
+             a.title, a.description, a.due_date, a.status, a.created_at
+      FROM assignments a
+      LEFT JOIN students s ON a.student_id = s.id
+      ${studentDbId ? 'WHERE a.student_id = ?' : ''}
+      ORDER BY a.due_date IS NULL, a.due_date ASC, a.id DESC
+    `;
+
+    const results = await db.query(sql, studentDbId ? [studentDbId] : []);
+    res.json(results);
   } catch (err) {
     console.error('Error fetching assignments:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message || 'Failed to fetch assignments' });
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({
+        error: 'DB_ERROR',
+        message: 'assignments table does not exist. Please create it in the SQL schema.'
+      });
+    }
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
-// GET single assignment
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const sql = `SELECT id, title, description, status, course_id, student_id, tutor_id, due_date, created_at, updated_at FROM assignments WHERE id = ?`;
-    const rows = await db.query(sql, [id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
-    res.json(normalize(rows[0]));
-  } catch (err) {
-    console.error('Error fetching assignment:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message || 'Failed to fetch assignment' });
-  }
-});
-
-// CREATE assignment
 router.post('/', async (req, res) => {
-  const { title, description = '', status, course_id = null, student_id = null, tutor_id = null, due_date = null } = req.body || {};
-  if (!title || title.trim() === '') return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Title is required' });
-  const normalizedStatus = normalizeStatus(status);
-  if (!normalizedStatus) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid status' });
+  const { student_id, title, description, due_date, status } = req.body || {};
+
+  const studentDbId = await resolveStudentId(student_id);
+
+  if (!studentDbId || !title) {
+    return res.status(400).json({
+      error: 'VALIDATION_ERROR',
+      message: 'student_id and title are required'
+    });
+  }
 
   try {
-    const sql = `INSERT INTO assignments (title, description, status, course_id, student_id, tutor_id, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`;
-    const result = await db.query(sql, [title.trim(), description, normalizedStatus, course_id || null, student_id || null, tutor_id || null, due_date || null]);
-    const created = {
-      id: result.insertId,
-      title: title.trim(),
-      description,
-      status: normalizedStatus,
-      course_id: course_id || null,
-      student_id: student_id || null,
-      tutor_id: tutor_id || null,
-      due_date: due_date || null,
-      created_at: new Date(),
-      updated_at: new Date()
-    };
-    res.status(201).json(created);
+    const sql = `
+      INSERT INTO assignments (student_id, title, description, due_date, status)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    const result = await db.query(sql, [
+      studentDbId,
+      title.toString(),
+      (description || '').toString(),
+      due_date || null,
+      (status || 'pending').toString()
+    ]);
+
+    const fetch = await db.query(
+      'SELECT id, student_id, title, description, due_date, status, created_at FROM assignments WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json(fetch[0]);
   } catch (err) {
     console.error('Error creating assignment:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message || 'Failed to create assignment' });
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({
+        error: 'DB_ERROR',
+        message: 'assignments table does not exist. Please create it in the SQL schema.'
+      });
+    }
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
-// UPDATE assignment
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, description = '', status, course_id = null, student_id = null, tutor_id = null, due_date = null } = req.body || {};
-  if (!title || title.trim() === '') return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Title is required' });
-  const normalizedStatus = normalizeStatus(status);
-  if (!normalizedStatus) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid status' });
+  const { student_id, title, description, due_date, status } = req.body || {};
+
+  const studentDbId = await resolveStudentId(student_id);
+
+  if (!studentDbId || !title) {
+    return res.status(400).json({
+      error: 'VALIDATION_ERROR',
+      message: 'student_id and title are required'
+    });
+  }
 
   try {
-    const updateSql = `UPDATE assignments SET title = ?, description = ?, status = ?, course_id = ?, student_id = ?, tutor_id = ?, due_date = ?, updated_at = NOW() WHERE id = ?`;
-    const result = await db.query(updateSql, [title.trim(), description, normalizedStatus, course_id || null, student_id || null, tutor_id || null, due_date || null, id]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
-    const rows = await db.query('SELECT id, title, description, status, course_id, student_id, tutor_id, due_date, created_at, updated_at FROM assignments WHERE id = ?', [id]);
-    res.json(normalize(rows[0]));
+    const sql = `
+      UPDATE assignments
+      SET student_id = ?, title = ?, description = ?, due_date = ?, status = ?
+      WHERE id = ?
+    `;
+
+    await db.query(sql, [
+      studentDbId,
+      title.toString(),
+      (description || '').toString(),
+      due_date || null,
+      (status || 'pending').toString(),
+      id
+    ]);
+
+    const fetch = await db.query(
+      'SELECT id, student_id, title, description, due_date, status, created_at FROM assignments WHERE id = ?',
+      [id]
+    );
+    if (fetch.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
+    res.json(fetch[0]);
   } catch (err) {
     console.error('Error updating assignment:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message || 'Failed to update assignment' });
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
-// DELETE assignment
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await db.query('DELETE FROM assignments WHERE id = ?', [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
-    res.json({ success: true, message: 'Assignment deleted' });
+    const exists = await db.query('SELECT id FROM assignments WHERE id = ?', [id]);
+    if (exists.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
+    await db.query('DELETE FROM assignments WHERE id = ?', [id]);
+    res.json({ success: true });
   } catch (err) {
     console.error('Error deleting assignment:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message || 'Failed to delete assignment' });
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 

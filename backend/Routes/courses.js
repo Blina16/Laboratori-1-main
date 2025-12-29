@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ 
       error: 'DB_ERROR', 
       message: err.message || 'Failed to fetch courses',
-      details: err 
+      details: err.code || err.message 
     });
   }
 });

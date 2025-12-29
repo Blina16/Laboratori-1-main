@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ id: result.insertId, name, surname, bio: bio || '', rate: Number(rate) || 0 });
   } catch (err) {
     console.error('Database error:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message, details: err });
+    res.status(500).json({ error: 'DB_ERROR', message: err.message, details: err.code || err.message });
   }
 });
 

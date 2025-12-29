@@ -2,10 +2,26 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+async function resolveStudentId(studentIdentifier) {
+  if (studentIdentifier == null) return null;
+  const raw = String(studentIdentifier);
+  const asNumber = Number(raw);
+  if (Number.isInteger(asNumber) && String(asNumber) === raw) return asNumber;
+  const email = raw.trim().toLowerCase();
+  if (!email) return null;
+  const existing = await db.query('SELECT id FROM students WHERE email = ? LIMIT 1', [email]);
+  if (Array.isArray(existing) && existing.length > 0) return existing[0].id;
+  const name = email.includes('@') ? email.split('@')[0] : 'Student';
+  const created = await db.query('INSERT INTO students (first_name, last_name, email) VALUES (?, ?, ?)', [name, '', email]);
+  return created.insertId;
+}
+
 // Get all bookings for a student
 router.get('/student/:studentId', async (req, res) => {
   const { studentId } = req.params;
   try {
+    const studentDbId = await resolveStudentId(studentId);
+    if (!studentDbId) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid studentId' });
     const sql = `
       SELECT b.*, t.first_name AS tutor_name, t.last_name AS tutor_surname, t.rate 
       FROM bookings b 
@@ -13,7 +29,7 @@ router.get('/student/:studentId', async (req, res) => {
       WHERE b.student_id = ? 
       ORDER BY b.lesson_date DESC, b.lesson_time DESC
     `;
-    const results = await db.query(sql, [studentId]);
+    const results = await db.query(sql, [studentDbId]);
     res.json(results);
   } catch (err) {
     console.error('Error fetching bookings:', err);
@@ -69,7 +85,7 @@ router.get('/availability/:tutorId/:date', async (req, res) => {
     res.json({ bookings, availability });
   } catch (err) {
     console.error('Error checking availability:', err);
-    res.status(500).json({ error: 'DB_ERROR', message: err.message, details: err });
+    res.status(500).json({ error: 'DB_ERROR', message: err.message, details: err.code || err.message });
   }
 });
 
@@ -82,6 +98,8 @@ router.post('/', async (req, res) => {
   }
   
   try {
+    const studentDbId = await resolveStudentId(studentId);
+    if (!studentDbId) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid studentId' });
     // Check if slot is already booked
     const checkSql = `
       SELECT id FROM bookings 
@@ -97,7 +115,7 @@ router.post('/', async (req, res) => {
       INSERT INTO bookings (student_id, tutor_id, lesson_date, lesson_time, duration, notes, status) 
       VALUES (?, ?, ?, ?, ?, ?, 'confirmed')
     `;
-    const result = await db.query(sql, [studentId, tutorId, lessonDate, lessonTime, duration || 60, notes || '']);
+    const result = await db.query(sql, [studentDbId, tutorId, lessonDate, lessonTime, duration || 60, notes || '']);
     
     // Fetch the created booking with tutor info
     const fetchSql = `
