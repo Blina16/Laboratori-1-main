@@ -7,7 +7,7 @@ const API_BASE = (() => {
 })();
 
 function getAuthHeaders() {
-  const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("authToken") || localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

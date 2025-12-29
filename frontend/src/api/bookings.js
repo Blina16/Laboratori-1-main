@@ -14,7 +14,7 @@ const API_BASE = (() => {
 const FALLBACK_API_BASE = "http://localhost:5000";
 
 function getAuthHeaders() {
-  const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("authToken") || localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
