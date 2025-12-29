@@ -18,8 +18,15 @@ const handleSubmit = async (e) => {
   }
 
   try {
+      // Determine API base (use REACT_APP_API_URL when set to avoid proxy/path issues)
+      const API_BASE = (() => {
+        const env = process.env.REACT_APP_API_URL;
+        if (env) return env.replace(/\/$/, "");
+        return ""; // fall back to relative path + dev server proxy
+      })();
+
       // Send signup data to backend
-      const response = await axios.post("/auth/signup", {
+      const response = await axios.post(`${API_BASE}/auth/signup`, {
         email,
         password,
         name: email.split("@")[0], // or use another field for name
