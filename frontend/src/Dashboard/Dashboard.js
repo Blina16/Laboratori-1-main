@@ -146,12 +146,12 @@ export default function Dashboard({ isAdmin = false }) {
   useEffect(() => {
     if (view === "assignments") {
       loadAssignments();
-      if (isAdmin) {
+      if (isAdmin || role === "tutor") {
         if (students.length === 0) loadStudents();
         if (courses.length === 0) loadCourses();
       }
     }
-  }, [view, isAdmin]);
+  }, [view, isAdmin, role]);
 
   const loadBookings = async () => {
     setBookingsLoading(true);
@@ -1074,149 +1074,7 @@ export default function Dashboard({ isAdmin = false }) {
           />
         )}
 
-        {/* Assignments view */}
-        {!selectedTutor && view === "assignments" && (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 className="section-title">Assignments</h2>
-              {isAdmin && (
-                <button
-                  className="add-button"
-                  onClick={() => {
-                    setShowAddAssignmentForm(!showAddAssignmentForm);
-                    setIsEditingAssignment(false);
-                    setEditAssignment(null);
-                    setFormErrors({});
-                  }}
-                >
-                  <Plus size={16} style={{ marginRight: 6 }} /> Add Assignment
-                </button>
-              )}
-            </div>
 
-            {isAdmin && showAddAssignmentForm && !isEditingAssignment && (
-              <div style={{ background: "#fff", padding: 20, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 16 }}>Add Assignment</h3>
-                <form onSubmit={handleAddAssignment}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <input type="text" placeholder="Title *" value={newAssignment.title} onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })} style={{ flex: 1, minWidth: 200, padding: 10 }} />
-                    <input type="date" placeholder="Due date" value={newAssignment.due_date} onChange={(e) => setNewAssignment({ ...newAssignment, due_date: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <select value={newAssignment.status} onChange={(e) => setNewAssignment({ ...newAssignment, status: e.target.value })} style={{ flex: 1, minWidth: 160, padding: 10 }}>
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                    <select value={newAssignment.course_id} onChange={(e) => setNewAssignment({ ...newAssignment, course_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }}>
-                      <option value="">(Optional) Course</option>
-                      {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <select value={newAssignment.student_id} onChange={(e) => setNewAssignment({ ...newAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }}>
-                      <option value="">(Optional) Student</option>
-                      {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-                    </select>
-                  </div>
-                  <textarea placeholder="Description" value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })} style={{ width: "100%", marginTop: 12, padding: 10, minHeight: 80 }} />
-                  {Object.values(formErrors || {}).length > 0 && (
-                    <p style={{ color: "#e11d48", marginTop: 8 }}>{Object.values(formErrors).join(" • ")}</p>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                    <button type="button" onClick={() => { setShowAddAssignmentForm(false); setNewAssignment({ title: "", description: "", due_date: "", course_id: "", student_id: "", status: "pending" }); setFormErrors({}); }}>Cancel</button>
-                    <button type="submit" className="add-button">Add Assignment</button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {isEditingAssignment && editAssignment && (
-              <div style={{ background: "#fff", padding: 20, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 16 }}>Edit Assignment</h3>
-                <form onSubmit={handleUpdateAssignment}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <input type="text" placeholder="Title *" value={editAssignment.title} onChange={(e) => setEditAssignment({ ...editAssignment, title: e.target.value })} style={{ flex: 1, minWidth: 200, padding: 10 }} />
-                    <input type="date" placeholder="Due date" value={editAssignment.due_date || ""} onChange={(e) => setEditAssignment({ ...editAssignment, due_date: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <select value={editAssignment.status} onChange={(e) => setEditAssignment({ ...editAssignment, status: e.target.value })} style={{ flex: 1, minWidth: 160, padding: 10 }}>
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                    <select value={editAssignment.course_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, course_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }}>
-                      <option value="">(Optional) Course</option>
-                      {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <select value={editAssignment.student_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }}>
-                      <option value="">(Optional) Student</option>
-                      {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-                    </select>
-                  </div>
-                  <textarea placeholder="Description" value={editAssignment.description || ""} onChange={(e) => setEditAssignment({ ...editAssignment, description: e.target.value })} style={{ width: "100%", marginTop: 12, padding: 10, minHeight: 80 }} />
-                  {Object.values(formErrors || {}).length > 0 && (
-                    <p style={{ color: "#e11d48", marginTop: 8 }}>{Object.values(formErrors).join(" • ")}</p>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                    <button type="button" onClick={cancelEditAssignment}>Cancel</button>
-                    <button type="submit" className="add-button">Save Changes</button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {assignmentsLoading ? (
-              <p>Loading assignments...</p>
-            ) : assignments.length === 0 ? (
-              <p>No assignments yet.</p>
-            ) : (
-              <div className="bookings-list">
-                {assignments.map((a) => (
-                  <div key={a.id} className="booking-card">
-                    <div className="booking-header">
-                      <div>
-                        <h3>{a.title}</h3>
-                        <p className="booking-status">
-                          {a.status === "completed" ? "Completed" :
-                           a.status === "in_progress" ? "In progress" :
-                           a.status === "archived" ? "Archived" : "Pending"}
-                        </p>
-                      </div>
-                      {a.due_date && (
-                        <div className="booking-price">
-                          Due: {new Date(a.due_date).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
-                    {a.description && (
-                      <div className="booking-notes"><strong>Description:</strong> {a.description}</div>
-                    )}
-                    <div className="booking-actions-list">
-                      {a.course_id && <span style={{ fontSize: 13, color: "#6b7280" }}>Course ID: {a.course_id}</span>}
-                      {a.student_id && <span style={{ fontSize: 13, color: "#6b7280" }}>Student: {a.student_id}</span>}
-                    </div>
-                    {isAdmin && (
-                      <div className="booking-actions-list">
-                        <button className="view-profile-btn" onClick={() => startEditAssignment(a)}><Pencil size={14} /> Edit</button>
-                        <button className="remove-button" onClick={() => confirmDeleteAssignment(a.id)}><Trash2 size={14} /> Delete</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {deleteConfirmAssignmentId && (
-              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-                <div style={{ background: "#fff", padding: 24, borderRadius: 12, maxWidth: 400, width: "90%" }}>
-                  <h3 style={{ marginTop: 0 }}>Confirm Delete</h3>
-                  <p>Are you sure you want to delete this assignment?</p>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button onClick={cancelDeleteAssignment}>Cancel</button>
-                    <button onClick={() => handleDeleteAssignment(deleteConfirmAssignmentId)} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 6 }}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
 
 
         {/* Courses view (Student read-only) */}
@@ -1315,9 +1173,10 @@ export default function Dashboard({ isAdmin = false }) {
                     <input type="datetime-local" placeholder="Due date" value={newAssignment.due_date} onChange={(e) => setNewAssignment({ ...newAssignment, due_date: e.target.value })} style={{ flex: 1, minWidth: 220, padding: 10 }} />
                   </div>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
-                    <input type="number" placeholder="Course ID (optional)" value={newAssignment.course_id} onChange={(e) => setNewAssignment({ ...newAssignment, course_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <input type="number" placeholder="Student ID (optional)" value={newAssignment.student_id} onChange={(e) => setNewAssignment({ ...newAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <input type="number" placeholder="Tutor ID (optional)" value={newAssignment.tutor_id} onChange={(e) => setNewAssignment({ ...newAssignment, tutor_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
+                    <select value={newAssignment.student_id} onChange={(e) => setNewAssignment({ ...newAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} required>
+                      <option value="">Select Student *</option>
+                      {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.email})</option>)}
+                    </select>
                   </div>
                   <textarea placeholder="Description" value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })} style={{ width: "100%", marginTop: 10, padding: 10, minHeight: 100 }} />
                   {Object.values(formErrors || {}).length > 0 && (
@@ -1345,9 +1204,10 @@ export default function Dashboard({ isAdmin = false }) {
                     <input type="datetime-local" placeholder="Due date" value={editAssignment.due_date || ""} onChange={(e) => setEditAssignment({ ...editAssignment, due_date: e.target.value })} style={{ flex: 1, minWidth: 220, padding: 10 }} />
                   </div>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
-                    <input type="number" placeholder="Course ID (optional)" value={editAssignment.course_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, course_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <input type="number" placeholder="Student ID (optional)" value={editAssignment.student_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
-                    <input type="number" placeholder="Tutor ID (optional)" value={editAssignment.tutor_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, tutor_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} />
+                    <select value={editAssignment.student_id || ""} onChange={(e) => setEditAssignment({ ...editAssignment, student_id: e.target.value })} style={{ flex: 1, minWidth: 180, padding: 10 }} required>
+                      <option value="">Select Student *</option>
+                      {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.email})</option>)}
+                    </select>
                   </div>
                   <textarea placeholder="Description" value={editAssignment.description || ""} onChange={(e) => setEditAssignment({ ...editAssignment, description: e.target.value })} style={{ width: "100%", marginTop: 10, padding: 10, minHeight: 100 }} />
                   {Object.values(formErrors || {}).length > 0 && (
