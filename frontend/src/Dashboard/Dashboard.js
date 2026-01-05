@@ -5,7 +5,7 @@ import { fetchTutors, createTutor, deleteTutor, updateTutor } from "../api/tutor
 import { getStudentBookings, generateGoogleCalendarUrl } from "../api/bookings";
 import { fetchCourses, createCourse, updateCourse, deleteCourse, getCourseTutors } from "../api/courses";
 import { fetchStudents, createStudent, updateStudent, deleteStudent } from "../api/students";
-import { fetchGrades, createGrade, updateGrade, deleteGrade } from "../api/grades";
+import { fetchGrades, fetchGradesByStudent, createGrade, updateGrade, deleteGrade } from "../api/grades";
 import { fetchPaymentsByStudent, createPayment, updatePayment, deletePayment } from "../api/payments";
 import { fetchAssignments, createAssignment, updateAssignment, deleteAssignment } from "../api/assignments";
 import BookingComponent from "../Components/Booking";
@@ -129,12 +129,12 @@ export default function Dashboard({ isAdmin = false }) {
     }
   }, [view, isAdmin]);
 
-  // Load grades for admin
+  // Load grades for current role
   useEffect(() => {
-    if (isAdmin && view === "grades") {
+    if (view === "grades") {
       loadGrades();
     }
-  }, [view, isAdmin]);
+  }, [view]);
 
   // Load payments for student (dashboard and payments view)
   useEffect(() => {
@@ -397,7 +397,12 @@ export default function Dashboard({ isAdmin = false }) {
   const loadGrades = async () => {
     setGradesLoading(true);
     try {
-      const data = await fetchGrades();
+      let data;
+      if (role === "student") {
+        data = await fetchGradesByStudent(studentId);
+      } else {
+        data = await fetchGrades();
+      }
       setGrades(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading grades:", err);
@@ -968,7 +973,7 @@ export default function Dashboard({ isAdmin = false }) {
               Courses
             </li>
           )}
-          {role === "student" && (
+          {(role === "student" || role === "tutor") && (
             <li onClick={() => setView("courses")}>
               <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
               Courses
@@ -987,6 +992,12 @@ export default function Dashboard({ isAdmin = false }) {
             </li>
           )}
           {isAdmin && (
+            <li onClick={() => setView("grades")}>
+              <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Grades
+            </li>
+          )}
+          {(role === "student" || role === "tutor") && !isAdmin && (
             <li onClick={() => setView("grades")}>
               <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
               Grades
@@ -1132,6 +1143,38 @@ export default function Dashboard({ isAdmin = false }) {
                         </div>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Grades view (Student/Tutor read-only) */}
+        {!selectedTutor && view === "grades" && !isAdmin && (
+          <>
+            <h2 className="section-title">{role === "student" ? "My Grades" : "Grades"}</h2>
+            {gradesLoading ? (
+              <p>Loading grades...</p>
+            ) : grades.length === 0 ? (
+              <p>No grades yet.</p>
+            ) : (
+              <div className="bookings-list">
+                {grades.map((g) => (
+                  <div key={g.id} className="booking-card">
+                    <div className="booking-header">
+                      <div>
+                        <h3>
+                          {role === "tutor"
+                            ? (g.student_first_name ? `${g.student_first_name} ${g.student_last_name}` : `Student #${g.student_id}`)
+                            : (g.course_name ? g.course_name : "No course")}
+                        </h3>
+                        <p className="booking-status">Grade: {g.grade_value}</p>
+                      </div>
+                    </div>
+                    {g.comments && (
+                      <div className="booking-notes"><strong>Comments:</strong> {g.comments}</div>
+                    )}
                   </div>
                 ))}
               </div>

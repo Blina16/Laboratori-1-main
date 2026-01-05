@@ -7,17 +7,18 @@ function SignupForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("student");
+  const [adminSecret, setAdminSecret] = useState("");
   const navigate = useNavigate();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (password !== confirmPassword) {
-    alert("Passwords don't match!");
-    return;
-  }
+    if (password !== confirmPassword) {
+      alert("Passwords don't match!");
+      return;
+    }
 
-  try {
+    try {
       // Determine API base (use REACT_APP_API_URL when set to avoid proxy/path issues)
       const API_BASE = (() => {
         const env = process.env.REACT_APP_API_URL;
@@ -31,6 +32,7 @@ const handleSubmit = async (e) => {
         password,
         name: email.split("@")[0], // or use another field for name
         role: role, // Include role in signup
+        adminSecret: role === "admin" ? adminSecret : undefined,
       });
 
       const data = response.data;
@@ -92,6 +94,19 @@ const handleSubmit = async (e) => {
               <option value="tutor">Tutor</option>
             </select>
           </div>
+          {role === "admin" && (
+            <div>
+              <label style={labelStyle}>Admin Secret Key</label>
+              <input
+                type="password"
+                placeholder="Enter admin secret"
+                value={adminSecret}
+                onChange={(e) => setAdminSecret(e.target.value)}
+                style={inputStyle}
+                required
+              />
+            </div>
+          )}
           <button type="submit" style={buttonStyle}>Sign Up</button>
         </form>
         <div style={{ marginTop: 12, textAlign: "center", color: "var(--text-secondary)" }}>
