@@ -180,9 +180,21 @@ if (DB_CLIENT === 'mssql') {
         start_time TEXT NOT NULL,
         end_time TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS about_us (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT
+    );
     `;
 
     db.exec(createTables);
+    
+    // Seed about_us if empty
+    const aboutUsCount = db.prepare('SELECT count(*) as count FROM about_us').get();
+    if (aboutUsCount.count === 0) {
+        db.prepare('INSERT INTO about_us (description) VALUES (?)').run('Welcome to our tutoring platform!');
+    }
+
     console.log('✅ Database tables ready');
 
     // Quick migration: ensure tutors table has expected columns (first_name, last_name, description, rate)
@@ -214,6 +226,37 @@ if (DB_CLIENT === 'mssql') {
         console.error('Migration check for tutors failed:', e && e.message);
     }
 
+    // Quick migration: ensure users table has expected columns (email, name)
+    try {
+        const cols = db.prepare("PRAGMA table_info(users);").all();
+        const colNames = cols.map(c => c.name);
+        const missing = [];
+        if (!colNames.includes('email')) missing.push("email TEXT UNIQUE");
+        if (!colNames.includes('name')) missing.push("name TEXT");
+        
+        if (missing.length) {
+            console.log('ℹ️ Migrating users table, adding columns:', missing.join(', '));
+            for (const colDef of missing) {
+                try {
+                    // Note: SQLite might complain about adding UNIQUE constraint with default NULL values if table not empty.
+                    // But for now let's try. If it fails, we catch it.
+                    db.prepare(`ALTER TABLE users ADD COLUMN ${colDef}`).run();
+                } catch (e) {
+                     console.error(`Failed to add column ${colDef} to users:`, e.message);
+                     // Fallback: try adding without UNIQUE if that was the issue
+                     if (colDef.includes('UNIQUE')) {
+                         try {
+                             const simpleDef = colDef.replace('UNIQUE', '');
+                             db.prepare(`ALTER TABLE users ADD COLUMN ${simpleDef}`).run();
+                         } catch (e2) {}
+                     }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Migration check for users failed:', e && e.message);
+    }
+
     module.exports = {
         query: (sql, params = []) => {
             try {
@@ -221,7 +264,9 @@ if (DB_CLIENT === 'mssql') {
                 if (sql.trim().toLowerCase().startsWith('select')) {
                     return params.length ? stmt.all(params) : stmt.all();
                 }
-                return params.length ? stmt.run(params) : stmt.run();
+                const result = params.length ? stmt.run(params) : stmt.run();
+                // Map lastInsertRowid to insertId for MySQL compatibility
+                return { ...result, insertId: result.lastInsertRowid };
             } catch (error) {
                 console.error('Database error:', error);
                 throw error;
