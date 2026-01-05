@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(fetch[0]);
   } catch (err) {
     console.error('Error creating grade:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE') {
+    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
       return res.status(500).json({ error: 'DB_ERROR', message: 'grades table does not exist. Please create it in the SQL schema.' });
     }
     res.status(500).json({ error: 'DB_ERROR', message: err.message });

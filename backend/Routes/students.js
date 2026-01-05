@@ -40,10 +40,10 @@ router.post('/', async (req, res) => {
     res.status(201).json({ id: result.insertId, first_name: first_name.trim(), last_name: last_name.trim(), email: email.trim() });
   } catch (err) {
     console.error('Error creating student:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE') {
+    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
       return res.status(500).json({ error: 'DB_ERROR', message: 'students table does not exist. Please create it in the SQL schema.' });
     }
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (err.code === 'ER_DUP_ENTRY' || err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(400).json({ error: 'DUPLICATE_ERROR', message: 'Email already exists' });
     }
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
@@ -65,7 +65,7 @@ router.put('/:id', async (req, res) => {
     res.json(fetch[0]);
   } catch (err) {
     console.error('Error updating student:', err);
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (err.code === 'ER_DUP_ENTRY' || err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(400).json({ error: 'DUPLICATE_ERROR', message: 'Email already exists' });
     }
     res.status(500).json({ error: 'DB_ERROR', message: err.message });

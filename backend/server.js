@@ -26,6 +26,7 @@ const courses = require('./Routes/courses');
 const bookings = require('./Routes/bookings');
 const auth = require('./Routes/auth');
 const assignments = require('./Routes/assignments');
+const aboutUs = require('./Routes/aboutUs');
 
 app.use('/api/tutors', tutors);
 app.use('/api/students', students);
@@ -36,6 +37,7 @@ app.use('/api/auth', auth);
 // Also mount auth at /auth for frontend compatibility (frontend posts to /auth/*)
 app.use('/auth', auth);
 app.use('/api/assignments', assignments);
+app.use('/api/about-us', aboutUs);
 
 // Simple health check
 app.get('/', (req, res) => res.send('Backend running'));
