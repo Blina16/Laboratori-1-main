@@ -1,11 +1,11 @@
 const bcrypt = require('bcryptjs');
-const db = require('../config/dbconfig');
+const db = require('../db');
 
 
 class UserController {
   static async getAllUsers(req, res) {
     try {
-      const [users] = await db.query('SELECT id, name, email, role FROM users_');
+      const users = await db.query('SELECT id, name, email, role FROM users');
       res.json(users);
     } catch (err) {
       console.error('Error getting users:', err.message);
@@ -20,7 +20,7 @@ class UserController {
       return res.status(400).json({ message: 'Invalid role parameter' });
     }
     try {
-      const [users] = await db.query('SELECT id, name, email, role FROM users_ WHERE role = ?', [role]);
+      const users = await db.query('SELECT id, name, email, role FROM users WHERE role = ?', [role]);
       res.json(users);
     } catch (err) {
       console.error('Error getting users by role:', err.message);
@@ -31,7 +31,7 @@ class UserController {
   static async getUserById(req, res) {
     const { id } = req.params;
     try {
-      const [users] = await db.query('SELECT id, name, email, role FROM users_ WHERE id = ?', [id]);
+      const users = await db.query('SELECT id, name, email, role FROM users WHERE id = ?', [id]);
       if (users.length === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
@@ -49,14 +49,14 @@ class UserController {
     }
 
     try {
-      const [existing] = await db.query('SELECT * FROM users_ WHERE email = ?', [email]);
+      const existing = await db.query('SELECT * FROM users WHERE email = ?', [email]);
       if (existing.length > 0) {
         return res.status(409).json({ message: 'Email already exists.' });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
       await db.query(
-        'INSERT INTO users_ (name, email, password, role) VALUES (?, ?, ?, ?)',
+        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
         [name, email, hashedPassword, role]
       );
       res.status(201).json({ message: 'User created successfully!' });
@@ -71,12 +71,12 @@ class UserController {
     const { name, email, password, role } = req.body;
 
     try {
-      const [existing] = await db.query('SELECT * FROM users_ WHERE id = ?', [id]);
+      const existing = await db.query('SELECT * FROM users WHERE id = ?', [id]);
       if (existing.length === 0) {
         return res.status(404).json({ message: 'User not found.' });
       }
 
-      let query = 'UPDATE users_ SET name = ?, email = ?';
+      let query = 'UPDATE users SET name = ?, email = ?';
       const params = [name, email];
 
       if (role !== undefined) {

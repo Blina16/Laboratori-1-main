@@ -56,7 +56,7 @@ function Navbar() {
             <button className="login-btn" onClick={() => { setIsOpen(false); handleLogout(); }}>Logout</button>
           </>
         ) : (
-          <Link to="/login" className="login-btn" onClick={() => setIsOpen(false)}>Log In</Link>
+          <Link to="/login" className="login-btn" onClick={() => setIsOpen(false)}>Log Out</Link>
         )}
 
         {/* ✅ Link directly to backend */}
