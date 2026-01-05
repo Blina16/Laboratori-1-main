@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('Error fetching assignments:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE') {
+    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
       return res.status(500).json({
         error: 'DB_ERROR',
         message: 'assignments table does not exist. Please create it in the SQL schema.'
@@ -77,7 +77,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(fetch[0]);
   } catch (err) {
     console.error('Error creating assignment:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE') {
+    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
       return res.status(500).json({
         error: 'DB_ERROR',
         message: 'assignments table does not exist. Please create it in the SQL schema.'
