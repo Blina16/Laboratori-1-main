@@ -37,7 +37,7 @@ if (DB_CLIENT === 'mssql') {
 
     const pool = new sql.ConnectionPool(config);
     const poolConnect = pool.connect().then(() => {
-        console.log('✅ Connected to MSSQL database');
+        console.log('✅ Connected to phpmyadmin database');
     }).catch(err => {
         console.error('MSSQL connection error:', err);
         throw err;
@@ -101,91 +101,7 @@ if (DB_CLIENT === 'mssql') {
     console.log('✅ Connected to SQLite database');
 
     // Create tables if they don't exist (keeps previous behavior)
-    const createTables = `
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'student',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tutors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        description TEXT,
-        rate REAL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS students (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS courses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tutor_courses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tutor_id INTEGER NOT NULL,
-        course_id INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS grades (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        course_id INTEGER,
-        grade_value TEXT NOT NULL,
-        comments TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        tutor_id INTEGER NOT NULL,
-        lesson_date TEXT NOT NULL,
-        lesson_time TEXT NOT NULL,
-        duration INTEGER DEFAULT 60,
-        notes TEXT,
-        status TEXT DEFAULT 'confirmed',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS assignments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        due_date TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tutor_availability (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tutor_id INTEGER NOT NULL,
-        day_of_week INTEGER NOT NULL,
-        start_time TEXT NOT NULL,
-        end_time TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS about_us (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        description TEXT
-    );
-    `;
+   
 
     db.exec(createTables);
     
@@ -193,6 +109,14 @@ if (DB_CLIENT === 'mssql') {
     const aboutUsCount = db.prepare('SELECT count(*) as count FROM about_us').get();
     if (aboutUsCount.count === 0) {
         db.prepare('INSERT INTO about_us (description) VALUES (?)').run('Welcome to our tutoring platform!');
+    }
+
+    // Migration: Add file_path to assignments if it doesn't exist
+    const assignmentsColumns = db.prepare("PRAGMA table_info(assignments)").all();
+    const hasFilePath = assignmentsColumns.some(col => col.name === 'file_path');
+    if (!hasFilePath) {
+        console.log('Migrating: Adding file_path column to assignments table...');
+        db.prepare("ALTER TABLE assignments ADD COLUMN file_path TEXT").run();
     }
 
     console.log('✅ Database tables ready');

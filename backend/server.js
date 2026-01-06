@@ -54,4 +54,25 @@ app.listen(PORT, () => {
     console.log(`Backend listening on port ${PORT} (CORS origin: ${corsOrigin})`);
 });
 
+
+
+
+app.post("/grades", (req, res) => {
+  const { student_id, course_id, grade, comment } = req.body;
+
+  if (!student_id || !course_id || !grade) {
+    return res.status(400).json({ message: "Required fields missing" });
+  }
+
+  const sql =
+    "INSERT INTO grades (student_id, course_id, grade, comment) VALUES (?, ?, ?, ?)";
+
+  db.query(sql, [student_id, course_id, grade, comment], (err) => {
+    if (err) return res.status(500).json({ message: "Failed to add grade" });
+
+    res.status(201).json({ message: "Grade added successfully" });
+  });
+});
+
+
 module.exports = app;
