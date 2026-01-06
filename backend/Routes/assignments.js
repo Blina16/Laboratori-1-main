@@ -1,6 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
+const path = require('path');
+
+// Configure multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
 
 async function resolveStudentId(studentIdentifier) {
   if (studentIdentifier == null) return null;
@@ -87,6 +102,51 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.put('/:id/submit', upload.single('file'), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const checkSql = 'SELECT * FROM assignments WHERE id = ?';
+    const existing = await db.query(checkSql, [id]);
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
+    }
+
+    let filePath = req.file ? req.file.path : null;
+    if (filePath) {
+      // Normalize path to use forward slashes for URLs
+      filePath = filePath.replace(/\\/g, '/');
+    }
+    
+    // Only update status and file_path
+    let sql = `
+      UPDATE assignments
+      SET status = 'submitted'
+    `;
+    const params = [];
+    
+    if (filePath) {
+      sql += `, file_path = ?`;
+      params.push(filePath);
+    }
+    
+    sql += ` WHERE id = ?`;
+    params.push(id);
+
+    await db.query(sql, params);
+
+    const fetch = await db.query(
+      'SELECT id, student_id, title, description, due_date, status, file_path, created_at FROM assignments WHERE id = ?',
+      [id]
+    );
+    res.json(fetch[0]);
+  } catch (err) {
+    console.error('Error submitting assignment:', err);
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
+  }
+});
+
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { student_id, title, description, due_date, status } = req.body || {};
@@ -117,7 +177,7 @@ router.put('/:id', async (req, res) => {
     ]);
 
     const fetch = await db.query(
-      'SELECT id, student_id, title, description, due_date, status, created_at FROM assignments WHERE id = ?',
+      'SELECT id, student_id, title, description, due_date, status, file_path, created_at FROM assignments WHERE id = ?',
       [id]
     );
     if (fetch.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });

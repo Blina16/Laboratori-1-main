@@ -13,6 +13,7 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API routes
 const mainRoutes = require('./routes');
@@ -50,7 +51,7 @@ if (process.env.SERVE_STATIC === 'true') {
 }
 
 app.listen(PORT, () => {
-    console.log(`🚀 Backend listening on port ${PORT} (CORS origin: ${corsOrigin})`);
+    console.log(`Backend listening on port ${PORT} (CORS origin: ${corsOrigin})`);
 });
 
 module.exports = app;
