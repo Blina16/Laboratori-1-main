@@ -177,5 +177,21 @@ export const createAssignment = (data) =>
 export const updateAssignment = (id, data) =>
   api.put(`/api/assignments/${id}`, data);
 
+export const submitAssignment = (id, file) => {
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    // When sending FormData, let the browser set Content-Type (it adds boundary)
+    return fetch(`${API_BASE}/api/assignments/${id}/submit`, {
+      method: "PUT",
+      body: formData
+    }).then(res => {
+      if (!res.ok) throw new Error("Submission failed");
+      return res.json();
+    });
+  }
+  return api.put(`/api/assignments/${id}/submit`, {});
+};
+
 export const deleteAssignment = (id) =>
   api.delete(`/api/assignments/${id}`);
