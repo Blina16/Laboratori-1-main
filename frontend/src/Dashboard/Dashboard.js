@@ -7,7 +7,7 @@ import { fetchCourses, createCourse, updateCourse, deleteCourse, getCourseTutors
 import { fetchStudents, createStudent, updateStudent, deleteStudent } from "../api/students";
 import { fetchGrades, fetchGradesByStudent, createGrade, updateGrade, deleteGrade } from "../api/grades";
 import { fetchPaymentsByStudent, createPayment, updatePayment, deletePayment } from "../api/payments";
-import { fetchAssignments, createAssignment, updateAssignment, deleteAssignment } from "../api/assignments";
+import { fetchAssignments, createAssignment, updateAssignment, deleteAssignment, submitAssignment } from "../api/assignments";
 import BookingComponent from "../Components/Booking";
 import CalendarView from "../Components/Calendar";
 
@@ -72,6 +72,8 @@ export default function Dashboard({ isAdmin = false }) {
   const [isEditingAssignment, setIsEditingAssignment] = useState(false);
   const [editAssignment, setEditAssignment] = useState(null);
   const [deleteConfirmAssignmentId, setDeleteConfirmAssignmentId] = useState(null);
+  const [submissionAssignmentId, setSubmissionAssignmentId] = useState(null);
+  const [submissionFile, setSubmissionFile] = useState(null);
   const role = localStorage.getItem("role");
   const studentId = localStorage.getItem("email") || localStorage.getItem("userId") || "student1";
   const tutorIdFromStorage = localStorage.getItem("tutorId");
@@ -731,6 +733,21 @@ export default function Dashboard({ isAdmin = false }) {
     }
   };
 
+  const handleMarkAsSubmitted = async () => {
+    if (!submissionAssignmentId) return;
+    try {
+      await submitAssignment(submissionAssignmentId, submissionFile);
+      setSuccessMessage("Assignment submitted successfully!");
+      loadAssignments();
+      setSubmissionAssignmentId(null);
+      setSubmissionFile(null);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to submit assignment:", err);
+      setError("Failed to submit assignment.");
+    }
+  };
+
   const startEditAssignment = (assignment) => {
     setEditAssignment({ ...assignment, course_id: assignment.course_id || "", student_id: assignment.student_id || "", due_date: assignment.due_date ? assignment.due_date.slice(0, 10) : "" });
     setIsEditingAssignment(true);
@@ -1276,6 +1293,11 @@ export default function Dashboard({ isAdmin = false }) {
                       <div>
                         <h3>{a.title}</h3>
                         <p className="booking-status">{a.status}</p>
+                        {a.file_path && (
+                          <a href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/${a.file_path}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, display: "block", marginTop: 4, color: "#0284c7" }}>
+                            View Submission
+                          </a>
+                        )}
                       </div>
                       {a.due_date && (
                         <div className="booking-price">
@@ -1295,6 +1317,11 @@ export default function Dashboard({ isAdmin = false }) {
                       <div className="booking-actions-list">
                         <button className="view-profile-btn" onClick={() => startEditAssignment(a)}><Pencil size={14} /> Edit</button>
                         <button className="remove-button" onClick={() => setDeleteConfirmAssignmentId(a.id)}><Trash2 size={14} /> Delete</button>
+                      </div>
+                    )}
+                    {role === "student" && a.status !== "submitted" && a.status !== "graded" && (
+                      <div className="booking-actions-list">
+                        <button className="view-profile-btn" onClick={() => setSubmissionAssignmentId(a.id)}>Upload Work Files/Photos</button>
                       </div>
                     )}
                   </div>
