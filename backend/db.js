@@ -90,6 +90,58 @@ if (DB_CLIENT === 'mssql') {
     };
 
 } else {
+    if (DB_CLIENT === 'mysql') {
+        const mysql = require('mysql2/promise');
+        const host = process.env.DB_HOST || 'localhost';
+        const user = process.env.DB_USER || 'root';
+        const password = process.env.DB_PASS || '';
+        const database = process.env.DB_NAME || 'lab1';
+        const port = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306;
+
+        const pool = mysql.createPool({
+            host,
+            user,
+            password,
+            database,
+            port,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+
+        console.log(`✅ MySQL pool created (host=${host}, user=${user}, db=${database})`);
+
+        module.exports = {
+            query: async (sql, params = []) => {
+                const [rows, result] = await pool.execute(sql, params);
+                // For SELECT, mysql2 returns rows array; for INSERT/UPDATE/DELETE, result is OkPacket
+                if (Array.isArray(rows)) {
+                    return rows;
+                }
+                // Map insertId for compatibility
+                return { ...result, insertId: result?.insertId };
+            },
+            transaction: async (queries = []) => {
+                const conn = await pool.getConnection();
+                try {
+                    await conn.beginTransaction();
+                    const results = [];
+                    for (const { sql, params = [] } of queries) {
+                        const [rows, res] = await conn.execute(sql, params);
+                        results.push(Array.isArray(rows) ? rows : res);
+                    }
+                    await conn.commit();
+                    return results;
+                } catch (err) {
+                    await conn.rollback();
+                    throw err;
+                } finally {
+                    conn.release();
+                }
+            }
+        };
+        return;
+    }
     const Database = require('better-sqlite3');
     const path = require('path');
 
@@ -101,7 +153,82 @@ if (DB_CLIENT === 'mssql') {
     console.log('✅ Connected to SQLite database');
 
     // Create tables if they don't exist (keeps previous behavior)
-   
+    const createTables = `
+        CREATE TABLE IF NOT EXISTS users_ (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS tutors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            surname TEXT,
+            bio TEXT,
+            rate REAL DEFAULT 0,
+            img TEXT
+        );
+        
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS courses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            category TEXT
+        );
+        
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            tutor_id INTEGER,
+            booking_date DATETIME,
+            status TEXT DEFAULT 'pending'
+        );
+        
+        CREATE TABLE IF NOT EXISTS grades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            course_id INTEGER,
+            grade_value TEXT,
+            comments TEXT
+        );
+        
+        CREATE TABLE IF NOT EXISTS assignments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            due_date DATE,
+            course_id INTEGER,
+            student_id INTEGER,
+            status TEXT DEFAULT 'pending',
+            file_path TEXT
+        );
+        
+        CREATE TABLE IF NOT EXISTS about_us (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT
+        );
+        
+        CREATE TABLE IF NOT EXISTS assignment_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assignment_id INTEGER NOT NULL,
+            file_name TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_size INTEGER,
+            mime_type TEXT,
+            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE
+        );
+    `;
 
     db.exec(createTables);
     
