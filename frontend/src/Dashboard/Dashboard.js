@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from "react";
+import { Users, UserPlus, Calendar, DollarSign, BookOpen, FileText, Plus, Edit, Trash2, X, Clock, ChevronLeft, ChevronRight, GraduationCap, Database, Heart, Pencil } from "lucide-react";
+import CalendarView from "../Components/CalendarView";
 import "./Dashboard.css";
-import { Heart, CheckCircle, Plus, Pencil, Trash2, Calendar, BookOpen, Clock, GraduationCap } from "lucide-react"; // icons
 import { fetchTutors, createTutor, deleteTutor, updateTutor } from "../api/tutors";
 import { getStudentBookings, generateGoogleCalendarUrl } from "../api/bookings";
 import { fetchCourses, createCourse, updateCourse, deleteCourse, getCourseTutors } from "../api/courses";
 import { fetchStudents, createStudent, updateStudent, deleteStudent } from "../api/students";
 import { fetchGrades, fetchGradesByStudent, createGrade, updateGrade, deleteGrade } from "../api/grades";
-import { fetchPaymentsByStudent, createPayment, updatePayment, deletePayment } from "../api/payments";
 import { fetchAssignments, createAssignment, updateAssignment, deleteAssignment, submitAssignment } from "../api/assignments";
 import BookingComponent from "../Components/Booking";
-import CalendarView from "../Components/Calendar";
 
 
 
 
 const placeholderImg = "https://via.placeholder.com/150";
 
-export default function Dashboard({ isAdmin = false }) {
+function Dashboard({ isAdmin = false }) {
   const [favorites, setFavorites] = useState([]);
   const [view, setView] = useState("dashboard");
   const [tutors, setTutors] = useState([]);
@@ -58,13 +57,6 @@ export default function Dashboard({ isAdmin = false }) {
   const [isEditingGrade, setIsEditingGrade] = useState(false);
   const [editGrade, setEditGrade] = useState(null);
   const [deleteConfirmGradeId, setDeleteConfirmGradeId] = useState(null);
-  const [payments, setPayments] = useState([]);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [showAddPaymentForm, setShowAddPaymentForm] = useState(false);
-  const [newPayment, setNewPayment] = useState({ amount: "", currency: "USD", method: "manual", reference: "" });
-  const [isEditingPayment, setIsEditingPayment] = useState(false);
-  const [editPayment, setEditPayment] = useState(null);
-  const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [showAddAssignmentForm, setShowAddAssignmentForm] = useState(false);
@@ -74,6 +66,88 @@ export default function Dashboard({ isAdmin = false }) {
   const [deleteConfirmAssignmentId, setDeleteConfirmAssignmentId] = useState(null);
   const [submissionAssignmentId, setSubmissionAssignmentId] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
+  const [submissionFiles, setSubmissionFiles] = useState([]);
+  const [viewSubmissionAssignmentId, setViewSubmissionAssignmentId] = useState(null);
+  const [viewSubmissionsAssignmentId, setViewSubmissionsAssignmentId] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage for saved preference
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Smart Scheduling State
+  const [showSchedulingModal, setShowSchedulingModal] = useState(false);
+  const [selectedTutorForScheduling, setSelectedTutorForScheduling] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [schedulingLoading, setSchedulingLoading] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    subject: "",
+    duration: 60,
+    notes: "",
+    payment_method: "card"
+  });
+
+  // Rating System State
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [tutorToRate, setTutorToRate] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [tutorRatings, setTutorRatings] = useState({}); // Store ratings for each tutor
+
+  // Tutor Features State
+  const [showVideoConference, setShowVideoConference] = useState(false);
+  const [videoSessionLink, setVideoSessionLink] = useState("");
+  const [tutorEarnings, setTutorEarnings] = useState([]);
+  const [earningsLoading, setEarningsLoading] = useState(false);
+  const [tutorResources, setTutorResources] = useState([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [showAddResourceForm, setShowAddResourceForm] = useState(false);
+  const [newResource, setNewResource] = useState({
+    title: "",
+    description: "",
+    file_url: "",
+    category: "document",
+    is_public: false
+  });
+  const [editingResource, setEditingResource] = useState(null);
+  const [videoSessions, setVideoSessions] = useState([]);
+  const [showVideoSessions, setShowVideoSessions] = useState(false);
+
+  // Backup System State
+  const [backups, setBackups] = useState([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [selectedBackup, setSelectedBackup] = useState(null);
+  const [backupProgress, setBackupProgress] = useState(0);
+  const [restoreProgress, setRestoreProgress] = useState(0);
+  const [backupSchedule, setBackupSchedule] = useState({
+    enabled: false,
+    frequency: 'weekly',
+    time: '02:00',
+    retention: 30 // days
+  });
+
+  
+
+  // Sync dark mode with localStorage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('darkMode');
+      if (saved) {
+        setDarkMode(JSON.parse(saved));
+      }
+    };
+
+    // Listen for storage changes
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   const role = localStorage.getItem("role");
   const studentId = localStorage.getItem("email") || localStorage.getItem("userId") || "student1";
   const tutorIdFromStorage = localStorage.getItem("tutorId");
@@ -85,12 +159,474 @@ export default function Dashboard({ isAdmin = false }) {
       // First try to get from localStorage
       if (tutorIdFromStorage) return tutorIdFromStorage;
       // If no tutors loaded yet, return null
-      if (tutors.length === 0) return null;
-      // Fallback: use first tutor's ID (for now)
-      // In a real app, you'd match by email or store tutor ID during login
-      return tutors[0].id;
+      return null;
     }
     return null;
+  };
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+    // Dispatch storage event for other components
+    window.dispatchEvent(new Event('storage'));
+  };
+
+  // Smart Scheduling Functions
+  const openSchedulingModal = (tutor) => {
+    setSelectedTutorForScheduling(tutor);
+    setShowSchedulingModal(true);
+    generateAvailableSlots(tutor);
+  };
+
+  const generateAvailableSlots = (tutor) => {
+    // Generate mock available slots for the next 7 days
+    const slots = [];
+    const today = new Date();
+    
+    for (let day = 0; day < 7; day++) {
+      const currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + day);
+      
+      // Generate slots from 9 AM to 8 PM
+      for (let hour = 9; hour <= 20; hour++) {
+        // Skip some random slots to simulate availability
+        if (Math.random() > 0.3) {
+          const slotDate = new Date(currentDate);
+          slotDate.setHours(hour, 0, 0, 0);
+          
+          slots.push({
+            id: `${day}-${hour}`,
+            date: slotDate,
+            dayName: slotDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            dateStr: slotDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            time: slotDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            available: true,
+            price: tutor.rate || 50
+          });
+        }
+      }
+    }
+    
+    setAvailableSlots(slots.sort((a, b) => a.date - b.date));
+  };
+
+  const handleBookSession = async () => {
+    if (!selectedSlot || !selectedTutorForScheduling) return;
+    
+    setSchedulingLoading(true);
+    try {
+      // Mock booking creation - in real app, this would call API
+      const newBooking = {
+        id: Date.now(),
+        tutor_id: selectedTutorForScheduling.id,
+        tutor_name: `${selectedTutorForScheduling.name} ${selectedTutorForScheduling.surname}`,
+        student_id: studentId,
+        subject: bookingForm.subject,
+        date_time: selectedSlot.date.toISOString(),
+        duration: bookingForm.duration,
+        price: selectedSlot.price * (bookingForm.duration / 60),
+        status: 'scheduled',
+        payment_method: bookingForm.payment_method,
+        payment_status: 'pending',
+        notes: bookingForm.notes,
+        created_at: new Date().toISOString()
+      };
+      
+      setMyBookings([newBooking, ...myBookings]);
+      
+      // Add to calendar events
+      const calendarEvent = {
+        id: `booking-${newBooking.id}`,
+        title: `${bookingForm.subject} with ${selectedTutorForScheduling.name}`,
+        start: selectedSlot.date,
+        end: new Date(selectedSlot.date.getTime() + bookingForm.duration * 60000),
+        type: 'booking',
+        tutor: selectedTutorForScheduling,
+        booking: newBooking,
+        color: '#059669'
+      };
+      
+      // Get existing calendar events from localStorage
+      const existingEvents = JSON.parse(localStorage.getItem('calendarEvents') || '[]');
+      const updatedEvents = [...existingEvents, calendarEvent];
+      localStorage.setItem('calendarEvents', JSON.stringify(updatedEvents));
+      
+      // Generate calendar links
+      const startDate = selectedSlot.date;
+      const endDate = new Date(selectedSlot.date.getTime() + bookingForm.duration * 60000);
+      const eventTitle = `${bookingForm.subject} with ${selectedTutorForScheduling.name} ${selectedTutorForScheduling.surname}`;
+      const eventDescription = `Tutoring Session\nDuration: ${bookingForm.duration} minutes\nPrice: $${selectedSlot.price * (bookingForm.duration / 60)}\nNotes: ${bookingForm.notes || 'N/A'}`;
+      
+      // Google Calendar URL
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}/${endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}&details=${encodeURIComponent(eventDescription)}`;
+      
+      // Save calendar URLs for later use
+      newBooking.googleCalendarUrl = googleCalendarUrl;
+      
+      setMyBookings([newBooking, ...myBookings]);
+      
+      setSuccessMessage(
+        <div>
+          <div>Session scheduled successfully! Added to your calendar.</div>
+          <div style={{ marginTop: '12px' }}>
+            <a 
+              href={googleCalendarUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                background: '#4285f4',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginRight: '8px'
+              }}
+            >
+              📅 Add to Google Calendar
+            </a>
+            <button
+              onClick={() => {
+                // Create .ics file for Apple/Outlook Calendar
+                const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Tutor4Kids//Booking//EN
+BEGIN:VEVENT
+UID:${newBooking.id}@tutor4kids.com
+DTSTART:${startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}
+DTEND:${endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}
+SUMMARY:${eventTitle}
+DESCRIPTION:${eventDescription.replace(/\n/g, '\\n')}
+END:VEVENT
+END:VCALENDAR`;
+                
+                const blob = new Blob([icsContent], { type: 'text/calendar' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tutoring-session-${newBooking.id}.ics`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#000000',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              📱 Add to Apple/Outlook Calendar
+            </button>
+          </div>
+        </div>
+      );
+      setShowSchedulingModal(false);
+      setSelectedSlot(null);
+      setBookingForm({ subject: "", duration: 60, notes: "", payment_method: "card" });
+      
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to schedule session. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setSchedulingLoading(false);
+    }
+  };
+
+  // Rating System Functions
+  const openRatingModal = (tutor) => {
+    setTutorToRate(tutor);
+    setShowRatingModal(true);
+    setRating(0);
+    setRatingComment("");
+  };
+
+  const handleRatingSubmit = async () => {
+    if (rating === 0 || !tutorToRate) return;
+    
+    setRatingLoading(true);
+    try {
+      // Mock rating submission - in real app, this would call API
+      const newRating = {
+        tutor_id: tutorToRate.id,
+        student_id: studentId,
+        rating: rating,
+        comment: ratingComment,
+        created_at: new Date().toISOString()
+      };
+      
+      // Update tutor ratings
+      const currentRatings = tutorRatings[tutorToRate.id] || [];
+      const updatedRatings = [...currentRatings, newRating];
+      setTutorRatings({
+        ...tutorRatings,
+        [tutorToRate.id]: updatedRatings
+      });
+      
+      setSuccessMessage('Thank you for your rating!');
+      setShowRatingModal(false);
+      setRating(0);
+      setRatingComment("");
+      
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to submit rating. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const getAverageRating = (tutorId) => {
+    const ratings = tutorRatings[tutorId] || [];
+    if (ratings.length === 0) return 0;
+    const sum = ratings.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / ratings.length).toFixed(1);
+  };
+
+  const renderStars = (rating, interactive = false, onRate = null) => {
+    return (
+      <div style={{ display: 'flex', gap: '4px' }}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => interactive && onRate && onRate(star)}
+            disabled={!interactive}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: interactive ? 'pointer' : 'default',
+              fontSize: '20px',
+              color: star <= rating ? '#fbbf24' : '#d1d5db',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {star <= rating ? '⭐' : '☆'}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Tutor Features Functions
+  const startVideoConference = (booking) => {
+    // Generate a mock video conference link
+    const sessionId = `session-${booking.id}-${Date.now()}`;
+    const link = `https://meet.jit.si/Tutor4Kids-${sessionId}`;
+    setVideoSessionLink(link);
+    setShowVideoConference(true);
+    
+    // Add to video sessions
+    const newVideoSession = {
+      id: Date.now(),
+      booking_id: booking.id,
+      session_link: link,
+      start_time: new Date().toISOString(),
+      status: 'active',
+      student_name: booking.student_name || 'Student',
+      subject: booking.subject || 'Tutoring Session'
+    };
+    setVideoSessions([newVideoSession, ...videoSessions]);
+  };
+
+  const loadTutorEarnings = async () => {
+    setEarningsLoading(true);
+    try {
+      // Mock earnings data - in real app, this would call API
+      const mockEarnings = [
+        { id: 1, date: '2024-01-15', amount: 50, session_type: 'individual', student_name: 'John Doe', duration: 60 },
+        { id: 2, date: '2024-01-16', amount: 75, session_type: 'group', student_name: 'Multiple', duration: 90 },
+        { id: 3, date: '2024-01-17', amount: 50, session_type: 'individual', student_name: 'Jane Smith', duration: 60 },
+        { id: 4, date: '2024-01-18', amount: 100, session_type: 'individual', student_name: 'Mike Johnson', duration: 120 },
+        { id: 5, date: '2024-01-19', amount: 50, session_type: 'individual', student_name: 'Sarah Wilson', duration: 60 }
+      ];
+      setTutorEarnings(mockEarnings);
+    } catch (err) {
+      setError('Failed to load earnings data');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setEarningsLoading(false);
+    }
+  };
+
+  const loadTutorResources = async () => {
+    setResourcesLoading(true);
+    try {
+      // Mock resources data - in real app, this would call API
+      const mockResources = [
+        { id: 1, title: 'Mathematics Basics', description: 'Introduction to basic math concepts', file_url: '/resources/math-basics.pdf', category: 'document', is_public: true, created_at: '2024-01-15' },
+        { id: 2, title: 'English Grammar Guide', description: 'Comprehensive grammar rules and examples', file_url: '/resources/english-grammar.pdf', category: 'document', is_public: false, created_at: '2024-01-16' },
+        { id: 3, title: 'Science Experiments', description: 'Fun science experiments for students', file_url: '/resources/science-experiments.pdf', category: 'video', is_public: true, created_at: '2024-01-17' },
+        { id: 4, title: 'History Timeline', description: 'Important historical events timeline', file_url: '/resources/history-timeline.pdf', category: 'document', is_public: true, created_at: '2024-01-18' }
+      ];
+      setTutorResources(mockResources);
+    } catch (err) {
+      setError('Failed to load resources');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setResourcesLoading(false);
+    }
+  };
+
+  const handleAddResource = async () => {
+    try {
+      // Mock resource creation - in real app, this would call API
+      const resource = {
+        id: Date.now(),
+        ...newResource,
+        created_at: new Date().toISOString()
+      };
+      setTutorResources([resource, ...tutorResources]);
+      setNewResource({ title: "", description: "", file_url: "", category: "document", is_public: false });
+      setShowAddResourceForm(false);
+      setSuccessMessage('Resource added successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to add resource');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleDeleteResource = (resourceId) => {
+    setTutorResources(tutorResources.filter(r => r.id !== resourceId));
+    setSuccessMessage('Resource deleted successfully!');
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  const getTotalEarnings = () => {
+    return tutorEarnings.reduce((total, earning) => total + earning.amount, 0);
+  };
+
+  const getMonthlyEarnings = () => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    return tutorEarnings
+      .filter(earning => {
+        const earningDate = new Date(earning.date);
+        return earningDate.getMonth() === currentMonth && earningDate.getFullYear() === currentYear;
+      })
+      .reduce((total, earning) => total + earning.amount, 0);
+  };
+
+  // Backup System Functions
+  const loadBackups = async () => {
+    try {
+      // Mock backup data - in real app, this would call API
+      const mockBackups = [
+        { id: 1, name: 'daily_backup_2024-01-20', date: '2024-01-20T02:00:00Z', size: '15.2 MB', type: 'automatic', status: 'completed' },
+        { id: 2, name: 'manual_backup_2024-01-19', date: '2024-01-19T14:30:00Z', size: '15.1 MB', type: 'manual', status: 'completed' },
+        { id: 3, name: 'daily_backup_2024-01-19', date: '2024-01-19T02:00:00Z', size: '15.1 MB', type: 'automatic', status: 'completed' },
+        { id: 4, name: 'daily_backup_2024-01-18', date: '2024-01-18T02:00:00Z', size: '15.0 MB', type: 'automatic', status: 'completed' },
+        { id: 5, name: 'weekly_backup_2024-01-14', date: '2024-01-14T02:00:00Z', size: '15.3 MB', type: 'scheduled', status: 'completed' }
+      ];
+      setBackups(mockBackups);
+    } catch (err) {
+      setError('Failed to load backups');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const createBackup = async (type = 'manual') => {
+    setBackupLoading(true);
+    setBackupProgress(0);
+    
+    try {
+      // Simulate backup process
+      for (let i = 0; i <= 100; i += 10) {
+        setBackupProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      const newBackup = {
+        id: Date.now(),
+        name: `${type}_backup_${new Date().toISOString().split('T')[0]}`,
+        date: new Date().toISOString(),
+        size: '15.2 MB',
+        type: type,
+        status: 'completed'
+      };
+      
+      setBackups([newBackup, ...backups]);
+      setSuccessMessage('Backup created successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+      setShowBackupModal(false);
+    } catch (err) {
+      setError('Failed to create backup');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setBackupLoading(false);
+      setBackupProgress(0);
+    }
+  };
+
+  const restoreBackup = async (backup) => {
+    setBackupLoading(true);
+    setRestoreProgress(0);
+    
+    try {
+      // Simulate restore process
+      for (let i = 0; i <= 100; i += 10) {
+        setRestoreProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      setSuccessMessage(`Successfully restored from ${backup.name}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      setShowRestoreModal(false);
+      setSelectedBackup(null);
+    } catch (err) {
+      setError('Failed to restore backup');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setBackupLoading(false);
+      setRestoreProgress(0);
+    }
+  };
+
+  const deleteBackup = async (backupId) => {
+    try {
+      setBackups(backups.filter(b => b.id !== backupId));
+      setSuccessMessage('Backup deleted successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to delete backup');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const downloadBackup = async (backup) => {
+    try {
+      // Simulate download
+      const link = document.createElement('a');
+      link.href = '#'; // In real app, this would be actual backup file URL
+      link.download = `${backup.name}.zip`;
+      link.click();
+      setSuccessMessage('Backup download started!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to download backup');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const updateBackupSchedule = async () => {
+    try {
+      // Mock schedule update - in real app, this would call API
+      setSuccessMessage('Backup schedule updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError('Failed to update backup schedule');
+      setTimeout(() => setError(null), 5000);
+    }
   };
 
   useEffect(() => {
@@ -108,6 +644,27 @@ export default function Dashboard({ isAdmin = false }) {
       loadBookings();
     }
   }, [view, role]);
+
+  // Load tutor earnings when earnings view is opened
+  useEffect(() => {
+    if (role === "tutor" && view === "earnings") {
+      loadTutorEarnings();
+    }
+  }, [view, role]);
+
+  // Load tutor resources when resources view is opened
+  useEffect(() => {
+    if (role === "tutor" && view === "resources") {
+      loadTutorResources();
+    }
+  }, [view, role]);
+
+  // Load backups when backup view is opened (admin only)
+  useEffect(() => {
+    if (isAdmin && view === "backup") {
+      loadBackups();
+    }
+  }, [view, isAdmin]);
 
   // Load courses when Courses view is opened (admin or student)
   useEffect(() => {
@@ -138,13 +695,7 @@ export default function Dashboard({ isAdmin = false }) {
     }
   }, [view]);
 
-  // Load payments for student (dashboard and payments view)
-  useEffect(() => {
-    if (!isAdmin && role === "student" && (view === "payments" || view === "dashboard")) {
-      loadPayments();
-    }
-  }, [view, role, isAdmin]);
-
+ 
   useEffect(() => {
     if (view === "assignments") {
       loadAssignments();
@@ -415,19 +966,6 @@ export default function Dashboard({ isAdmin = false }) {
     }
   };
 
-  const loadPayments = async () => {
-    setPaymentsLoading(true);
-    try {
-      const data = await fetchPaymentsByStudent(studentId);
-      setPayments(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error loading payments:", err);
-      setError(err.message || "Failed to load payments");
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setPaymentsLoading(false);
-    }
-  };
 
   const loadAssignments = async () => {
     setAssignmentsLoading(true);
@@ -736,11 +1274,11 @@ export default function Dashboard({ isAdmin = false }) {
   const handleMarkAsSubmitted = async () => {
     if (!submissionAssignmentId) return;
     try {
-      await submitAssignment(submissionAssignmentId, submissionFile);
+      await submitAssignment(submissionAssignmentId, submissionFiles);
       setSuccessMessage("Assignment submitted successfully!");
       loadAssignments();
       setSubmissionAssignmentId(null);
-      setSubmissionFile(null);
+      setSubmissionFiles([]);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error("Failed to submit assignment:", err);
@@ -808,7 +1346,12 @@ export default function Dashboard({ isAdmin = false }) {
 
   return (
     <div className="dashboard-container menu-dashboard-container">
-      <aside className="sidebar">
+      <aside className="sidebar" style={{
+        background: darkMode ? "#1f2937" : "#ffffff",
+        borderRight: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+        color: darkMode ? "#f9fafb" : "#111827",
+        transition: "all 0.3s ease"
+      }}>
         <h2>Dashboard</h2>
         <ul>
           <li onClick={() => setView("dashboard")}>Home</li>
@@ -822,160 +1365,16 @@ export default function Dashboard({ isAdmin = false }) {
 
         
 
-        {/* Payments view (Student) */}
-        {!selectedTutor && view === "payments" && role === "student" && (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 className="section-title">My Payments</h2>
-              <button
-                className="add-button"
-                onClick={() => { setShowAddPaymentForm(!showAddPaymentForm); setIsEditingPayment(false); setEditPayment(null); setFormErrors({}); }}
-              >
-                <Plus size={16} style={{ marginRight: 6 }} /> Add Payment
-              </button>
-            </div>
-
-            {showAddPaymentForm && !isEditingPayment && (
-              <div style={{ background: "#fff", padding: 20, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 16 }}>Add Payment</h3>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!newPayment.amount) { setFormErrors({ amount: "Amount is required" }); return; }
-                  try {
-                    const created = await createPayment({
-                      student_id: studentId,
-                      amount: Number(newPayment.amount),
-                      currency: newPayment.currency || "USD",
-                      method: newPayment.method || "manual",
-                      reference: newPayment.reference || "",
-                      status: "paid"
-                    });
-                    setPayments([created, ...payments]);
-                    setShowAddPaymentForm(false);
-                    setNewPayment({ amount: "", currency: "USD", method: "manual", reference: "" });
-                    setFormErrors({});
-                    setSuccessMessage("Payment added successfully!");
-                    setTimeout(() => setSuccessMessage(null), 3000);
-                  } catch (err) {
-                    setError(err.message || "Failed to add payment");
-                    setTimeout(() => setError(null), 5000);
-                  }
-                }}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <input type="number" min="0" step="0.01" placeholder="Amount *" value={newPayment.amount} onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })} style={{ flex: 1, minWidth: 160, padding: 10 }} />
-                    <input type="text" placeholder="Currency" value={newPayment.currency} onChange={(e) => setNewPayment({ ...newPayment, currency: e.target.value })} style={{ flex: 1, minWidth: 120, padding: 10 }} />
-                    <input type="text" placeholder="Method" value={newPayment.method} onChange={(e) => setNewPayment({ ...newPayment, method: e.target.value })} style={{ flex: 1, minWidth: 140, padding: 10 }} />
-                    <input type="text" placeholder="Reference" value={newPayment.reference} onChange={(e) => setNewPayment({ ...newPayment, reference: e.target.value })} style={{ flex: 2, minWidth: 200, padding: 10 }} />
-                  </div>
-                  {Object.values(formErrors || {}).length > 0 && (
-                    <p style={{ color: "#e11d48", marginTop: 8 }}>{Object.values(formErrors).join(" • ")}</p>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                    <button type="button" onClick={() => { setShowAddPaymentForm(false); setNewPayment({ amount: "", currency: "USD", method: "manual", reference: "" }); setFormErrors({}); }}>Cancel</button>
-                    <button type="submit" className="add-button">Add Payment</button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {isEditingPayment && editPayment && (
-              <div style={{ background: "#fff", padding: 20, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 16 }}>Edit Payment</h3>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!editPayment.amount) { setFormErrors({ amount: "Amount is required" }); return; }
-                  try {
-                    const updated = await updatePayment(editPayment.id, {
-                      student_id: studentId,
-                      amount: Number(editPayment.amount),
-                      currency: editPayment.currency || "USD",
-                      method: editPayment.method || "manual",
-                      reference: editPayment.reference || "",
-                      status: editPayment.status || "paid"
-                    });
-                    setPayments(payments.map(p => p.id === updated.id ? updated : p));
-                    setIsEditingPayment(false);
-                    setEditPayment(null);
-                    setFormErrors({});
-                    setSuccessMessage("Payment updated successfully!");
-                    setTimeout(() => setSuccessMessage(null), 3000);
-                  } catch (err) {
-                    setError(err.message || "Failed to update payment");
-                    setTimeout(() => setError(null), 5000);
-                  }
-                }}>
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <input type="number" min="0" step="0.01" placeholder="Amount *" value={editPayment.amount} onChange={(e) => setEditPayment({ ...editPayment, amount: e.target.value })} style={{ flex: 1, minWidth: 160, padding: 10 }} />
-                    <input type="text" placeholder="Currency" value={editPayment.currency || ""} onChange={(e) => setEditPayment({ ...editPayment, currency: e.target.value })} style={{ flex: 1, minWidth: 120, padding: 10 }} />
-                    <input type="text" placeholder="Method" value={editPayment.method || ""} onChange={(e) => setEditPayment({ ...editPayment, method: e.target.value })} style={{ flex: 1, minWidth: 140, padding: 10 }} />
-                    <input type="text" placeholder="Reference" value={editPayment.reference || ""} onChange={(e) => setEditPayment({ ...editPayment, reference: e.target.value })} style={{ flex: 2, minWidth: 200, padding: 10 }} />
-                  </div>
-                  {Object.values(formErrors || {}).length > 0 && (
-                    <p style={{ color: "#e11d48", marginTop: 8 }}>{Object.values(formErrors).join(" • ")}</p>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                    <button type="button" onClick={() => { setIsEditingPayment(false); setEditPayment(null); setFormErrors({}); }}>Cancel</button>
-                    <button type="submit" className="add-button">Save Changes</button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {paymentsLoading ? (
-              <p>Loading payments...</p>
-            ) : payments.length === 0 ? (
-              <p>No payments yet.</p>
-            ) : (
-              <div className="bookings-list">
-                {payments.map((p) => (
-                  <div key={p.id} className="booking-card">
-                    <div className="booking-header">
-                      <div>
-                        <h3>Payment #{p.id}</h3>
-                        <p className="booking-status">{p.status || 'paid'} • {p.currency || 'USD'} {Number(p.amount).toFixed(2)}</p>
-                      </div>
-                    </div>
-                    {p.reference && (
-                      <div className="booking-notes"><strong>Reference:</strong> {p.reference}</div>
-                    )}
-                    <div className="booking-actions-list">
-                      <button className="view-profile-btn" onClick={() => { setEditPayment({ ...p }); setIsEditingPayment(true); setShowAddPaymentForm(false); }}><Pencil size={14} /> Edit</button>
-                      <button className="remove-button" onClick={() => setDeleteConfirmPaymentId(p.id)}><Trash2 size={14} /> Delete</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {deleteConfirmPaymentId && (
-              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-                <div style={{ background: "#fff", padding: 24, borderRadius: 12, maxWidth: 400, width: "90%" }}>
-                  <h3 style={{ marginTop: 0 }}>Confirm Delete</h3>
-                  <p>Are you sure you want to delete this payment?</p>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button onClick={() => setDeleteConfirmPaymentId(null)}>Cancel</button>
-                    <button onClick={async () => {
-                      try {
-                        await deletePayment(deleteConfirmPaymentId);
-                        setPayments(payments.filter(x => x.id !== deleteConfirmPaymentId));
-                        setDeleteConfirmPaymentId(null);
-                        setSuccessMessage("Payment deleted successfully!");
-                        setTimeout(() => setSuccessMessage(null), 3000);
-                      } catch (err) {
-                        setError(err.message || "Failed to delete payment");
-                        setTimeout(() => setError(null), 5000);
-                      }
-                    }} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 6 }}>Delete</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
           {role === "student" && (
             <li onClick={() => setView("bookings")}>
               <BookOpen size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
               My Bookings
+            </li>
+          )}
+          {role === "student" && (
+            <li onClick={() => setView("tutors")}>
+              <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Find Tutors
             </li>
           )}
           {(role === "admin" || role === "tutor" || role === "student") && (
@@ -1004,7 +1403,7 @@ export default function Dashboard({ isAdmin = false }) {
           )}
           {isAdmin && (
             <li onClick={() => setView("students")}>
-              <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              <Users size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
               Students
             </li>
           )}
@@ -1014,39 +1413,187 @@ export default function Dashboard({ isAdmin = false }) {
               Grades
             </li>
           )}
-          {(role === "student" || role === "tutor") && !isAdmin && (
-            <li onClick={() => setView("grades")}>
-              <GraduationCap size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
-              Grades
+          {isAdmin && (
+            <li onClick={() => setView("backup")}>
+              <Database size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Backup System
+            </li>
+          )}
+          {role === "tutor" && (
+            <li onClick={() => setView("earnings")}>
+              <DollarSign size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Earnings
+            </li>
+          )}
+          {role === "tutor" && (
+            <li onClick={() => setView("resources")}>
+              <FileText size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Resources
+            </li>
+          )}
+          {role === "tutor" && (
+            <li onClick={() => setShowVideoSessions(true)}>
+              <Calendar size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Video Sessions
             </li>
           )}
         </ul>
       </aside>
 
-      <main className="main-content">
+      <main className="main-content" style={{
+        background: darkMode ? "#111827" : "#ffffff",
+        color: darkMode ? "#f9fafb" : "#111827",
+        minHeight: "100vh",
+        transition: "all 0.3s ease"
+      }}>
         {loading && <p>Loading tutors...</p>}
         {error && (
           <div style={{ 
-            background: "#fee2e2", 
-            color: "#b91c1c", 
+            background: darkMode ? "#7f1d1d" : "#fee2e2", 
+            color: darkMode ? "#fca5a5" : "#b91c1c", 
             padding: "12px 16px", 
             borderRadius: "8px", 
             marginBottom: "16px",
-            border: "1px solid #fecaca"
+            border: darkMode ? "1px solid #991b1b" : "1px solid #fecaca",
+            transition: "all 0.3s ease"
           }}>
             {error}
           </div>
         )}
         {successMessage && (
           <div style={{ 
-            background: "#d1fae5", 
-            color: "#065f46", 
+            background: darkMode ? "#064e3b" : "#d1fae5", 
+            color: darkMode ? "#6ee7b7" : "#065f46", 
             padding: "12px 16px", 
             borderRadius: "8px", 
             marginBottom: "16px",
-            border: "1px solid #a7f3d0"
+            border: darkMode ? "1px solid #065f46" : "1px solid #a7f3d0",
+            transition: "all 0.3s ease"
           }}>
             {successMessage}
+          </div>
+        )}
+
+        {/* Welcome Dashboard */}
+        {!selectedTutor && view === "dashboard" && (
+          <div style={{ 
+            background: darkMode 
+              ? "linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)" 
+              : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", 
+            padding: "32px", 
+            borderRadius: "16px", 
+            marginBottom: "24px",
+            color: "white",
+            boxShadow: darkMode 
+              ? "0 10px 25px rgba(0,0,0,0.3)" 
+              : "0 10px 25px rgba(0,0,0,0.1)",
+            transition: "all 0.3s ease"
+          }}>
+            <h1 style={{ margin: "0 0 16px 0", fontSize: "28px", fontWeight: "700" }}>
+              {role === "admin" && "Welcome, Administrator! 🎓"}
+              {role === "tutor" && "Welcome, Tutor! 📚"}
+              {role === "student" && "Welcome, Student! 🎯"}
+            </h1>
+            <p style={{ margin: "0 0 20px 0", fontSize: "16px", lineHeight: "1.5", opacity: 0.95 }}>
+              {role === "admin" && "Manage your tutoring platform with ease. Monitor students, tutors, courses, and track academic progress all in one place."}
+              {role === "tutor" && "Empower students through personalized learning. Manage your schedule, create assignments, and track student progress effectively."}
+              {role === "student" && "Achieve your academic goals with personalized tutoring. Find tutors, submit assignments, and track your learning journey."}
+            </p>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              {role === "admin" && (
+                <>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>{students.length}</strong> Students
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>{tutors.length}</strong> Tutors
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>{courses.length}</strong> Courses
+                  </div>
+                </>
+              )}
+              {role === "tutor" && (
+                <>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>📅</strong> Calendar
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>📝</strong> Assignments
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>📊</strong> Grades
+                  </div>
+                </>
+              )}
+              {role === "student" && (
+                <>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>👨‍🏫</strong> Find Tutors
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>📚</strong> Assignments
+                  </div>
+                  <div style={{ 
+                    background: "rgba(255,255,255,0.2)", 
+                    padding: "12px 16px", 
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    backdropFilter: "blur(10px)"
+                  }}>
+                    <strong>📈</strong> Grades
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -1316,12 +1863,18 @@ export default function Dashboard({ isAdmin = false }) {
                     {(role === "admin" || role === "tutor") && (
                       <div className="booking-actions-list">
                         <button className="view-profile-btn" onClick={() => startEditAssignment(a)}><Pencil size={14} /> Edit</button>
+                        <button className="view-profile-btn" onClick={() => setViewSubmissionsAssignmentId(a.id)}>View Submissions</button>
                         <button className="remove-button" onClick={() => setDeleteConfirmAssignmentId(a.id)}><Trash2 size={14} /> Delete</button>
                       </div>
                     )}
                     {role === "student" && a.status !== "submitted" && a.status !== "graded" && (
                       <div className="booking-actions-list">
                         <button className="view-profile-btn" onClick={() => setSubmissionAssignmentId(a.id)}>Upload Work Files/Photos</button>
+                      </div>
+                    )}
+                    {role === "student" && a.status === "submitted" && (
+                      <div className="booking-actions-list">
+                        <button className="view-profile-btn" onClick={() => setViewSubmissionAssignmentId(a.id)}>View Submission</button>
                       </div>
                     )}
                   </div>
@@ -1337,6 +1890,956 @@ export default function Dashboard({ isAdmin = false }) {
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                     <button onClick={() => setDeleteConfirmAssignmentId(null)}>Cancel</button>
                     <button onClick={() => handleDeleteAssignment(deleteConfirmAssignmentId)} style={{ background: "#b91c1c", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 6 }}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Assignment Submission Modal */}
+            {submissionAssignmentId && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+                <div style={{ 
+                  background: darkMode ? "#1f2937" : "#fff", 
+                  padding: 24, 
+                  borderRadius: 12, 
+                  maxWidth: 600, 
+                  width: "90%",
+                  color: darkMode ? "#f9fafb" : "#111827",
+                  transition: "all 0.3s ease"
+                }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Submit Assignment</h3>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    handleMarkAsSubmitted();
+                  }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", marginBottom: 8, fontWeight: "600" }}>Upload Files (Multiple files allowed):</label>
+                      <input 
+                        type="file" 
+                        multiple
+                        onChange={(e) => setSubmissionFiles(Array.from(e.target.files))}
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                        style={{ 
+                          width: "100%", 
+                          padding: "12px", 
+                          borderRadius: "8px", 
+                          border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                          fontSize: "16px",
+                          background: darkMode ? "#111827" : "#ffffff",
+                          color: darkMode ? "#f9fafb" : "#111827",
+                          transition: "all 0.3s ease"
+                        }}
+                      />
+                      {submissionFiles.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                          <p style={{ marginBottom: 8, fontWeight: "600", color: "#065f46" }}>
+                            Selected Files ({submissionFiles.length}):
+                          </p>
+                          {submissionFiles.map((file, index) => (
+                            <div key={index} style={{
+                              padding: "8px 12px",
+                              backgroundColor: "#f0f9ff",
+                              border: "1px solid #0284c7",
+                              borderRadius: "6px",
+                              marginBottom: "6px",
+                              fontSize: "14px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center"
+                            }}>
+                              <span>📄 {file.name}</span>
+                              <span style={{ fontSize: "12px", color: "#666" }}>
+                                {(file.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setSubmissionAssignmentId(null);
+                          setSubmissionFiles([]);
+                        }}
+                        style={{
+                          padding: "12px 24px",
+                          borderRadius: "8px",
+                          border: "1px solid #ddd",
+                          background: "#fff",
+                          cursor: "pointer",
+                          fontSize: "16px"
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        disabled={submissionFiles.length === 0}
+                        style={{
+                          padding: "12px 24px",
+                          borderRadius: "8px",
+                          border: "none",
+                          background: submissionFiles.length > 0 ? "#0284c7" : "#ccc",
+                          color: "#fff",
+                          cursor: submissionFiles.length > 0 ? "pointer" : "not-allowed",
+                          fontSize: "16px",
+                          fontWeight: "600"
+                        }}
+                      >
+                        Submit Assignment{submissionFiles.length > 1 ? ` (${submissionFiles.length} files)` : ''}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* View Submission Modal */}
+            {viewSubmissionAssignmentId && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+                <div style={{ background: "#fff", padding: 24, borderRadius: 12, maxWidth: 600, width: "90%" }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Assignment Submission</h3>
+                  {(() => {
+                    const assignment = assignments.find(a => a.id === viewSubmissionAssignmentId);
+                    if (!assignment) return <p>Assignment not found.</p>;
+                    
+                    return (
+                      <div>
+                        <div style={{ marginBottom: 16 }}>
+                          <h4 style={{ marginBottom: 8 }}>{assignment.title}</h4>
+                          <p style={{ color: "#666", marginBottom: 8 }}>{assignment.description}</p>
+                          <p style={{ fontSize: "14px", color: "#888" }}>
+                            Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}
+                          </p>
+                          <p style={{ fontSize: "14px", color: "#065f46", fontWeight: "600" }}>
+                            Status: Submitted
+                          </p>
+                        </div>
+                        
+                        <div style={{ marginBottom: 16 }}>
+                          <h5 style={{ marginBottom: 12 }}>Submitted Files:</h5>
+                          {assignment.file_path ? (
+                            <div style={{ 
+                              padding: "12px", 
+                              border: "1px solid #ddd", 
+                              borderRadius: "8px",
+                              backgroundColor: "#f9f9f9"
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  <div style={{ 
+                                    width: "40px", 
+                                    height: "40px", 
+                                    backgroundColor: "#e3f2fd", 
+                                    borderRadius: "8px", 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    justifyContent: "center",
+                                    marginRight: "12px"
+                                  }}>
+                                    📄
+                                  </div>
+                                  <div>
+                                    <p style={{ margin: 0, fontWeight: "600" }}>
+                                      {assignment.file_path.split('/').pop()}
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>
+                                      Submitted file
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => window.open(`http://localhost:5000/${assignment.file_path}`, '_blank')}
+                                  style={{
+                                    padding: "8px 16px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #0284c7",
+                                    background: "#fff",
+                                    color: "#0284c7",
+                                    cursor: "pointer",
+                                    fontSize: "14px"
+                                  }}
+                                >
+                                  View File
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ color: "#666", fontStyle: "italic" }}>No file uploaded</p>
+                          )}
+                        </div>
+
+                        {assignment.files && assignment.files.length > 0 && (
+                          <div style={{ marginBottom: 16 }}>
+                            <h5 style={{ marginBottom: 12 }}>Additional Files:</h5>
+                            {assignment.files.map((file, index) => (
+                              <div key={file.id} style={{ 
+                                padding: "8px", 
+                                border: "1px solid #ddd", 
+                                borderRadius: "6px",
+                                marginBottom: "8px",
+                                backgroundColor: "#f9f9f9"
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <span style={{ fontSize: "14px" }}>
+                                    📎 {file.file_path.split('/').pop()}
+                                  </span>
+                                  <button
+                                    onClick={() => window.open(`http://localhost:5000/${file.file_path}`, '_blank')}
+                                    style={{
+                                      padding: "4px 8px",
+                                      borderRadius: "4px",
+                                      border: "1px solid #0284c7",
+                                      background: "#fff",
+                                      color: "#0284c7",
+                                      cursor: "pointer",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                    <button 
+                      onClick={() => setViewSubmissionAssignmentId(null)}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        border: "1px solid #ddd",
+                        background: "#fff",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Teacher View Submissions Modal */}
+            {viewSubmissionsAssignmentId && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+                <div style={{ background: "#fff", padding: 24, borderRadius: 12, maxWidth: 800, width: "90%", maxHeight: "80vh", overflowY: "auto" }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Assignment Submissions</h3>
+                  {(() => {
+                    const assignment = assignments.find(a => a.id === viewSubmissionsAssignmentId);
+                    if (!assignment) return <p>Assignment not found.</p>;
+                    
+                    return (
+                      <div>
+                        <div style={{ marginBottom: 20, padding: "16px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
+                          <h4 style={{ marginBottom: 8 }}>{assignment.title}</h4>
+                          <p style={{ color: "#666", marginBottom: 8 }}>{assignment.description}</p>
+                          <p style={{ fontSize: "14px", color: "#888" }}>
+                            Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}
+                          </p>
+                          <p style={{ fontSize: "14px", color: "#666" }}>
+                            Student: {assignment.student_first_name ? `${assignment.student_first_name} ${assignment.student_last_name}` : `Student ID: ${assignment.student_id}`}
+                          </p>
+                          <p style={{ fontSize: "14px", fontWeight: "600", color: assignment.status === "submitted" ? "#065f46" : "#d97706" }}>
+                            Status: {assignment.status}
+                          </p>
+                        </div>
+                        
+                        <div style={{ marginBottom: 16 }}>
+                          <h5 style={{ marginBottom: 12 }}>Submitted Files:</h5>
+                          {assignment.files && assignment.files.length > 0 ? (
+                            <div>
+                              {assignment.files.map((file, index) => (
+                                <div key={file.id} style={{ 
+                                  padding: "12px", 
+                                  border: "1px solid #ddd", 
+                                  borderRadius: "8px",
+                                  marginBottom: "8px",
+                                  backgroundColor: "#f9f9f9"
+                                }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <div style={{ display: "flex", alignItems: "center" }}>
+                                      <div style={{ 
+                                        width: "40px", 
+                                        height: "40px", 
+                                        backgroundColor: "#e3f2fd", 
+                                        borderRadius: "8px", 
+                                        display: "flex", 
+                                        alignItems: "center", 
+                                        justifyContent: "center",
+                                        marginRight: "12px"
+                                      }}>
+                                        📄
+                                      </div>
+                                      <div>
+                                        <p style={{ margin: 0, fontWeight: "600" }}>
+                                          {file.file_path.split('/').pop()}
+                                        </p>
+                                        <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>
+                                          Uploaded: {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString() : 'Unknown date'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: "flex", gap: "8px" }}>
+                                      <button
+                                        onClick={() => window.open(`http://localhost:5000/${file.file_path}`, '_blank')}
+                                        style={{
+                                          padding: "8px 16px",
+                                          borderRadius: "6px",
+                                          border: "1px solid #0284c7",
+                                          background: "#fff",
+                                          color: "#0284c7",
+                                          cursor: "pointer",
+                                          fontSize: "14px"
+                                        }}
+                                      >
+                                        View File
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const link = document.createElement('a');
+                                          link.href = `http://localhost:5000/${file.file_path}`;
+                                          link.download = file.file_path.split('/').pop();
+                                          link.click();
+                                        }}
+                                        style={{
+                                          padding: "8px 16px",
+                                          borderRadius: "6px",
+                                          border: "1px solid #059669",
+                                          background: "#fff",
+                                          color: "#059669",
+                                          cursor: "pointer",
+                                          fontSize: "14px"
+                                        }}
+                                      >
+                                        Download
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ 
+                              padding: "20px", 
+                              textAlign: "center", 
+                              backgroundColor: "#f8f9fa", 
+                              borderRadius: "8px",
+                              border: "1px solid #e9ecef"
+                            }}>
+                              <div style={{ fontSize: "48px", marginBottom: "12px" }}>📁</div>
+                              <p style={{ color: "#666", margin: 0 }}>
+                                {assignment.status === "submitted" ? "No files uploaded" : "Assignment not submitted yet"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {assignment.file_path && (
+                          <div style={{ marginBottom: 16 }}>
+                            <h5 style={{ marginBottom: 12 }}>Main Submission File:</h5>
+                            <div style={{ 
+                              padding: "12px", 
+                              border: "1px solid #ddd", 
+                              borderRadius: "8px",
+                              backgroundColor: "#f9f9f9"
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  <div style={{ 
+                                    width: "40px", 
+                                    height: "40px", 
+                                    backgroundColor: "#e3f2fd", 
+                                    borderRadius: "8px", 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    justifyContent: "center",
+                                    marginRight: "12px"
+                                  }}>
+                                    📄
+                                  </div>
+                                  <div>
+                                    <p style={{ margin: 0, fontWeight: "600" }}>
+                                      {assignment.file_path.split('/').pop()}
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>
+                                      Main submission file
+                                    </p>
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                  <button
+                                    onClick={() => window.open(`http://localhost:5000/${assignment.file_path}`, '_blank')}
+                                    style={{
+                                      padding: "8px 16px",
+                                      borderRadius: "6px",
+                                      border: "1px solid #0284c7",
+                                      background: "#fff",
+                                      color: "#0284c7",
+                                      cursor: "pointer",
+                                      fontSize: "14px"
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = `http://localhost:5000/${assignment.file_path}`;
+                                      link.download = assignment.file_path.split('/').pop();
+                                      link.click();
+                                    }}
+                                    style={{
+                                      padding: "8px 16px",
+                                      borderRadius: "6px",
+                                      border: "1px solid #059669",
+                                      background: "#fff",
+                                      color: "#059669",
+                                      cursor: "pointer",
+                                      fontSize: "14px"
+                                    }}
+                                  >
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                    <button 
+                      onClick={() => setViewSubmissionsAssignmentId(null)}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        border: "1px solid #ddd",
+                        background: "#fff",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Smart Scheduling Modal */}
+            {showSchedulingModal && selectedTutorForScheduling && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" }}>
+                <div style={{ 
+                  background: darkMode ? "#1f2937" : "#fff", 
+                  padding: 24, 
+                  borderRadius: 12, 
+                  maxWidth: 800, 
+                  width: "100%", 
+                  maxHeight: "90vh", 
+                  overflowY: "auto",
+                  color: darkMode ? "#f9fafb" : "#111827",
+                  transition: "all 0.3s ease"
+                }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: "20px" }}>Schedule Session with {selectedTutorForScheduling.name} {selectedTutorForScheduling.surname}</h3>
+                  
+                  {/* Booking Form */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: "600", fontSize: "14px" }}>Subject:</label>
+                        <input 
+                          type="text" 
+                          value={bookingForm.subject}
+                          onChange={(e) => setBookingForm({...bookingForm, subject: e.target.value})}
+                          placeholder="e.g., Mathematics, English"
+                          style={{ 
+                            width: "100%", 
+                            padding: "12px", 
+                            borderRadius: "8px", 
+                            border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                            fontSize: "16px",
+                            background: darkMode ? "#111827" : "#ffffff",
+                            color: darkMode ? "#f9fafb" : "#111827",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: "600", fontSize: "14px" }}>Duration:</label>
+                        <select 
+                          value={bookingForm.duration}
+                          onChange={(e) => setBookingForm({...bookingForm, duration: parseInt(e.target.value)})}
+                          style={{ 
+                            width: "100%", 
+                            padding: "12px", 
+                            borderRadius: "8px", 
+                            border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                            fontSize: "16px",
+                            background: darkMode ? "#111827" : "#ffffff",
+                            color: darkMode ? "#f9fafb" : "#111827",
+                            boxSizing: "border-box"
+                          }}
+                        >
+                          <option value={30}>30 minutes</option>
+                          <option value={60}>1 hour</option>
+                          <option value={90}>1.5 hours</option>
+                          <option value={120}>2 hours</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", marginBottom: 8, fontWeight: "600", fontSize: "14px" }}>Notes (optional):</label>
+                      <textarea 
+                        value={bookingForm.notes}
+                        onChange={(e) => setBookingForm({...bookingForm, notes: e.target.value})}
+                        placeholder="Any specific topics or requirements..."
+                        style={{ 
+                          width: "100%", 
+                          padding: "12px", 
+                          borderRadius: "8px", 
+                          border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                          fontSize: "16px",
+                          background: darkMode ? "#111827" : "#ffffff",
+                          color: darkMode ? "#f9fafb" : "#111827",
+                          minHeight: "80px",
+                          resize: "vertical",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Available Time Slots */}
+                  <div style={{ marginBottom: 20 }}>
+                    <h4 style={{ marginBottom: 12, fontSize: "16px" }}>Available Time Slots:</h4>
+                    <div style={{ 
+                      maxHeight: "300px", 
+                      overflowY: "auto", 
+                      border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                      borderRadius: "8px",
+                      padding: "12px"
+                    }}>
+                      {availableSlots.length === 0 ? (
+                        <p style={{ textAlign: "center", color: darkMode ? "#9ca3af" : "#6b7280" }}>Loading available slots...</p>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
+                          {availableSlots.map((slot) => (
+                            <button
+                              key={slot.id}
+                              onClick={() => setSelectedSlot(slot)}
+                              disabled={!slot.available}
+                              style={{
+                                padding: "12px 8px",
+                                borderRadius: "8px",
+                                border: selectedSlot?.id === slot.id ? "2px solid #059669" : darkMode ? "1px solid #374151" : "1px solid #ddd",
+                                background: selectedSlot?.id === slot.id ? "#059669" : (slot.available ? (darkMode ? "#374151" : "#f9fafb") : "#e5e7eb"),
+                                color: selectedSlot?.id === slot.id ? "#fff" : (slot.available ? (darkMode ? "#f9fafb" : "#111827") : "#9ca3af"),
+                                cursor: slot.available ? "pointer" : "not-allowed",
+                                opacity: slot.available ? 1 : 0.5,
+                                fontSize: "13px",
+                                transition: "all 0.2s ease",
+                                minHeight: "100px",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "center"
+                              }}
+                            >
+                              <div style={{ fontWeight: "600", fontSize: "14px" }}>{slot.dayName}</div>
+                              <div style={{ fontSize: "12px" }}>{slot.dateStr}</div>
+                              <div style={{ fontSize: "13px", fontWeight: "500" }}>{slot.time}</div>
+                              <div style={{ fontSize: "11px", marginTop: "4px" }}>${slot.price}/hr</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Payment Method */}
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: "600", fontSize: "14px" }}>Payment Method:</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "14px" }}>
+                        <input 
+                          type="radio" 
+                          value="card"
+                          checked={bookingForm.payment_method === "card"}
+                          onChange={(e) => setBookingForm({...bookingForm, payment_method: e.target.value})}
+                        />
+                        <span>Credit/Debit Card</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "14px" }}>
+                        <input 
+                          type="radio" 
+                          value="paypal"
+                          checked={bookingForm.payment_method === "paypal"}
+                          onChange={(e) => setBookingForm({...bookingForm, payment_method: e.target.value})}
+                        />
+                        <span>PayPal</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Price Summary */}
+                  {selectedSlot && (
+                    <div style={{ 
+                      padding: "16px", 
+                      backgroundColor: darkMode ? "#374151" : "#f3f4f6", 
+                      borderRadius: "8px", 
+                      marginBottom: 20 
+                    }}>
+                      <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>Price Summary:</h4>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: "14px" }}>
+                        <span>Session Duration:</span>
+                        <span>{bookingForm.duration} minutes</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: "14px" }}>
+                        <span>Rate:</span>
+                        <span>${selectedSlot.price}/hr</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", fontSize: "18px", paddingTop: 8, borderTop: darkMode ? "1px solid #4b5563" : "1px solid #d1d5db" }}>
+                        <span>Total:</span>
+                        <span>${(selectedSlot.price * (bookingForm.duration / 60)).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button 
+                      onClick={() => {
+                        setShowSchedulingModal(false);
+                        setSelectedTutorForScheduling(null);
+                        setSelectedSlot(null);
+                        setBookingForm({ subject: "", duration: 60, notes: "", payment_method: "card" });
+                      }}
+                      style={{
+                        padding: "14px 24px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #4b5563" : "1px solid #ddd",
+                        background: darkMode ? "#374151" : "#fff",
+                        color: darkMode ? "#f9fafb" : "#111827",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        width: "100%",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleBookSession}
+                      disabled={!selectedSlot || !bookingForm.subject || schedulingLoading}
+                      style={{
+                        padding: "14px 24px",
+                        borderRadius: "8px",
+                        border: "none",
+                        background: schedulingLoading ? "#9ca3af" : "#059669",
+                        color: "#fff",
+                        cursor: schedulingLoading ? "not-allowed" : "pointer",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        width: "100%",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      {schedulingLoading ? "Scheduling..." : "Book & Pay"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rating Modal */}
+            {showRatingModal && tutorToRate && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" }}>
+                <div style={{ 
+                  background: darkMode ? "#1f2937" : "#fff", 
+                  padding: 24, 
+                  borderRadius: 12, 
+                  maxWidth: 500, 
+                  width: "100%",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  color: darkMode ? "#f9fafb" : "#111827",
+                  transition: "all 0.3s ease"
+                }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: "20px" }}>Rate {tutorToRate.name} {tutorToRate.surname}</h3>
+                  
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", marginBottom: 12, fontWeight: "600", fontSize: "14px" }}>Your Rating:</label>
+                    {renderStars(rating, true, setRating)}
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: "600", fontSize: "14px" }}>Comment (optional):</label>
+                    <textarea 
+                      value={ratingComment}
+                      onChange={(e) => setRatingComment(e.target.value)}
+                      placeholder="Share your experience with this tutor..."
+                      style={{ 
+                        width: "100%", 
+                        padding: "12px", 
+                        borderRadius: "8px", 
+                        border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                        fontSize: "16px",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#f9fafb" : "#111827",
+                        minHeight: "100px",
+                        resize: "vertical",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button 
+                      onClick={() => {
+                        setShowRatingModal(false);
+                        setTutorToRate(null);
+                        setRating(0);
+                        setRatingComment("");
+                      }}
+                      style={{
+                        padding: "14px 24px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #4b5563" : "1px solid #ddd",
+                        background: darkMode ? "#374151" : "#fff",
+                        color: darkMode ? "#f9fafb" : "#111827",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        width: "100%",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleRatingSubmit}
+                      disabled={rating === 0 || ratingLoading}
+                      style={{
+                        padding: "14px 24px",
+                        borderRadius: "8px",
+                        border: "none",
+                        background: ratingLoading ? "#9ca3af" : "#f59e0b",
+                        color: "#fff",
+                        cursor: ratingLoading ? "not-allowed" : "pointer",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        width: "100%",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      {ratingLoading ? "Submitting..." : "Submit Rating"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video Sessions Modal */}
+            {showVideoSessions && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" }}>
+                <div style={{ 
+                  background: darkMode ? "#1f2937" : "#fff", 
+                  padding: 24, 
+                  borderRadius: 12, 
+                  maxWidth: 800, 
+                  width: "100%", 
+                  maxHeight: "80vh", 
+                  overflowY: "auto",
+                  color: darkMode ? "#f9fafb" : "#111827",
+                  transition: "all 0.3s ease"
+                }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Video Sessions</h3>
+                  
+                  {videoSessions.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "40px" }}>
+                      <Calendar size={48} style={{ color: darkMode ? "#9ca3af" : "#6b7280", marginBottom: "16px" }} />
+                      <p style={{ fontSize: "18px", color: darkMode ? "#9ca3af" : "#6b7280", marginBottom: "8px" }}>
+                        No video sessions yet
+                      </p>
+                      <p style={{ color: darkMode ? "#6b7280" : "#9ca3af" }}>
+                        Start a video conference from your bookings
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: "16px" }}>
+                      {videoSessions.map((session) => (
+                        <div key={session.id} style={{
+                          background: darkMode ? "#374151" : "#f9fafb",
+                          padding: "16px",
+                          borderRadius: "8px",
+                          border: darkMode ? "1px solid #4b5563" : "1px solid #e5e7eb"
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: "16px", color: darkMode ? "#f9fafb" : "#111827" }}>
+                                {session.subject}
+                              </h4>
+                              <p style={{ margin: 0, fontSize: "14px", color: darkMode ? "#9ca3af" : "#6b7280" }}>
+                                with {session.student_name}
+                              </p>
+                            </div>
+                            <span style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              background: session.status === "active" ? "#059669" : "#6b7280",
+                              color: "white"
+                            }}>
+                              {session.status}
+                            </span>
+                          </div>
+                          <div style={{ marginBottom: "12px" }}>
+                            <p style={{ margin: 0, fontSize: "12px", color: darkMode ? "#9ca3af" : "#6b7280" }}>
+                              Started: {new Date(session.start_time).toLocaleString()}
+                            </p>
+                          </div>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => window.open(session.session_link, '_blank')}
+                              style={{
+                                background: "#3b82f6",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "6px",
+                                padding: "8px 16px",
+                                cursor: "pointer",
+                                fontSize: "14px",
+                                fontWeight: "600"
+                              }}
+                            >
+                              🎥 Join Session
+                            </button>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(session.session_link)}
+                              style={{
+                                background: "#6b7280",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "6px",
+                                padding: "8px 16px",
+                                cursor: "pointer",
+                                fontSize: "14px",
+                                fontWeight: "600"
+                              }}
+                            >
+                              📋 Copy Link
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                    <button 
+                      onClick={() => setShowVideoSessions(false)}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #4b5563" : "1px solid #ddd",
+                        background: darkMode ? "#374151" : "#fff",
+                        color: darkMode ? "#f9fafb" : "#111827",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video Conference Modal */}
+            {showVideoConference && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" }}>
+                <div style={{ 
+                  background: darkMode ? "#1f2937" : "#fff", 
+                  padding: 24, 
+                  borderRadius: 12, 
+                  maxWidth: 600, 
+                  width: "100%",
+                  color: darkMode ? "#f9fafb" : "#111827",
+                  transition: "all 0.3s ease"
+                }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Video Conference Started!</h3>
+                  
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ marginBottom: 12, fontSize: "16px" }}>
+                      Your video conference is ready. Click the button below to join the session:
+                    </p>
+                    <div style={{ background: darkMode ? "#374151" : "#f3f4f6", padding: "16px", borderRadius: "8px", marginBottom: "16px" }}>
+                      <p style={{ margin: 0, fontSize: "14px", wordBreak: "break-all", color: darkMode ? "#f9fafb" : "#111827" }}>
+                        <span style={{ fontWeight: "600" }}>Session Link:</span> {videoSessionLink}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button
+                      onClick={() => window.open(videoSessionLink, '_blank')}
+                      style={{
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "14px 24px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        width: "100%"
+                      }}
+                    >
+                      🎥 Join Video Conference
+                    </button>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(videoSessionLink)}
+                      style={{
+                        background: "#6b7280",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "14px 24px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        width: "100%"
+                      }}
+                    >
+                      📋 Copy Link
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowVideoConference(false);
+                        setVideoSessionLink("");
+                      }}
+                      style={{
+                        background: "#6b7280",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "14px 24px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        width: "100%"
+                      }}
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1418,6 +2921,88 @@ export default function Dashboard({ isAdmin = false }) {
                 </div>
               ))}
             </div>
+          </>
+        )}
+
+        {/* Tutors view (Student only) */}
+        {!selectedTutor && view === "tutors" && role === "student" && (
+          <>
+            <h2 className="section-title">Find Tutors</h2>
+            {loading ? (
+              <p>Loading tutors...</p>
+            ) : tutors.length === 0 ? (
+              <p>No tutors available yet.</p>
+            ) : (
+              <div className="tutor-list">
+                {tutors.map((t) => (
+                  <div 
+                    key={t.id} 
+                    className={`tutor-card ${highlightedId === t.id ? 'highlighted' : ''}`}
+                    onClick={() => setSelectedTutor(t)}
+                  >
+                    <div className="tutor-details">
+                      <h3>{t.name} {t.surname}</h3>
+                      <p className="tutor-subject" style={{ marginTop: 4 }}>Rate: ${Number(t.rate).toFixed(2)}/hr</p>
+                      {t.bio && <p className="tutor-bio" style={{ marginTop: 8 }}>{t.bio}</p>}
+                      
+                      {/* Rating Display */}
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {renderStars(getAverageRating(t.id))}
+                        <span style={{ fontSize: '14px', color: darkMode ? '#9ca3af' : '#6b7280' }}>
+                          {getAverageRating(t.id) > 0 ? `(${tutorRatings[t.id]?.length || 0} reviews)` : '(No reviews yet)'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ position: "absolute", top: 8, right: 8, display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <Heart
+                        size={20}
+                        color={favorites.includes(t.id) ? "#e63946" : "#bbb"}
+                        fill={favorites.includes(t.id) ? "#e63946" : "none"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(t.id);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openSchedulingModal(t); }}
+                        style={{
+                          background: "#059669",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          whiteSpace: "nowrap",
+                          minWidth: "60px"
+                        }}
+                      >
+                        📅 Schedule
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openRatingModal(t); }}
+                        style={{
+                          background: "#f59e0b",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          whiteSpace: "nowrap",
+                          minWidth: "60px"
+                        }}
+                      >
+                        ⭐ Rate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -1780,12 +3365,438 @@ export default function Dashboard({ isAdmin = false }) {
                       <button 
                         className="google-cal-btn"
                         onClick={() => {
-                          const calendarUrl = generateGoogleCalendarUrl(booking);
-                          window.open(calendarUrl, "_blank");
+                          // Generate Google Calendar URL
+                          const startDate = new Date(`${booking.lesson_date}T${booking.lesson_time}`);
+                          const endDate = new Date(startDate.getTime() + booking.duration * 60000);
+                          const eventTitle = `${booking.subject || 'Tutoring Session'} with ${booking.tutor_name}`;
+                          const eventDescription = `Tutoring Session\nDuration: ${booking.duration} minutes\nRate: $${booking.rate}/hour\nNotes: ${booking.notes || 'N/A'}`;
+                          
+                          const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}/${endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, 'Z')}&details=${encodeURIComponent(eventDescription)}`;
+                          window.open(googleCalendarUrl, "_blank");
                         }}
                       >
-                        <Calendar size={16} /> Add to Google Calendar
+                        📅 Add to Google Calendar
                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Earnings view (Tutor only) */}
+        {!selectedTutor && view === "earnings" && role === "tutor" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 className="section-title">My Earnings</h2>
+              <button
+                onClick={loadTutorEarnings}
+                style={{
+                  background: "#059669",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600"
+                }}
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {earningsLoading ? (
+              <p>Loading earnings data...</p>
+            ) : (
+              <div style={{ display: "grid", gap: "20px" }}>
+                {/* Earnings Summary Cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+                  <div style={{
+                    background: darkMode ? "#1f2937" : "#fff",
+                    padding: "20px",
+                    borderRadius: "12px",
+                    border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                      <DollarSign size={24} style={{ marginRight: "8px", color: "#059669" }} />
+                      <h3 style={{ margin: 0, fontSize: "14px", color: darkMode ? "#9ca3af" : "#6b7280" }}>Total Earnings</h3>
+                    </div>
+                    <div style={{ fontSize: "28px", fontWeight: "700", color: darkMode ? "#f9fafb" : "#111827" }}>
+                      ${getTotalEarnings().toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: darkMode ? "#1f2937" : "#fff",
+                    padding: "20px",
+                    borderRadius: "12px",
+                    border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                      <Calendar size={24} style={{ marginRight: "8px", color: "#3b82f6" }} />
+                      <h3 style={{ margin: 0, fontSize: "14px", color: darkMode ? "#9ca3af" : "#6b7280" }}>This Month</h3>
+                    </div>
+                    <div style={{ fontSize: "28px", fontWeight: "700", color: darkMode ? "#f9fafb" : "#111827" }}>
+                      ${getMonthlyEarnings().toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: darkMode ? "#1f2937" : "#fff",
+                    padding: "20px",
+                    borderRadius: "12px",
+                    border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                      <Users size={24} style={{ marginRight: "8px", color: "#f59e0b" }} />
+                      <h3 style={{ margin: 0, fontSize: "14px", color: darkMode ? "#9ca3af" : "#6b7280" }}>Total Sessions</h3>
+                    </div>
+                    <div style={{ fontSize: "28px", fontWeight: "700", color: darkMode ? "#f9fafb" : "#111827" }}>
+                      {tutorEarnings.length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Earnings Table */}
+                <div style={{
+                  background: darkMode ? "#1f2937" : "#fff",
+                  borderRadius: "12px",
+                  border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                  overflow: "hidden"
+                }}>
+                  <div style={{ padding: "20px", borderBottom: darkMode ? "1px solid #374151" : "1px solid #e5e7eb" }}>
+                    <h3 style={{ margin: 0, fontSize: "18px" }}>Recent Earnings</h3>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: darkMode ? "#374151" : "#f9fafb" }}>
+                          <th style={{ padding: "12px", textAlign: "left", fontSize: "14px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Date</th>
+                          <th style={{ padding: "12px", textAlign: "left", fontSize: "14px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Student</th>
+                          <th style={{ padding: "12px", textAlign: "left", fontSize: "14px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Type</th>
+                          <th style={{ padding: "12px", textAlign: "left", fontSize: "14px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Duration</th>
+                          <th style={{ padding: "12px", textAlign: "right", fontSize: "14px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tutorEarnings.map((earning) => (
+                          <tr key={earning.id} style={{ borderBottom: darkMode ? "1px solid #374151" : "1px solid #e5e7eb" }}>
+                            <td style={{ padding: "12px", fontSize: "14px", color: darkMode ? "#f9fafb" : "#111827" }}>
+                              {new Date(earning.date).toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: "12px", fontSize: "14px", color: darkMode ? "#f9fafb" : "#111827" }}>
+                              {earning.student_name}
+                            </td>
+                            <td style={{ padding: "12px", fontSize: "14px" }}>
+                              <span style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                background: earning.session_type === "individual" ? "#059669" : "#f59e0b",
+                                color: "white"
+                              }}>
+                                {earning.session_type}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px", fontSize: "14px", color: darkMode ? "#f9fafb" : "#111827" }}>
+                              {earning.duration} min
+                            </td>
+                            <td style={{ padding: "12px", fontSize: "14px", fontWeight: "600", textAlign: "right", color: "#059669" }}>
+                              ${earning.amount.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Resources view (Tutor only) */}
+        {!selectedTutor && view === "resources" && role === "tutor" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 className="section-title">My Resources</h2>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={() => setShowAddResourceForm(!showAddResourceForm)}
+                  style={{
+                    background: "#059669",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 20px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600"
+                  }}
+                >
+                  ➕ Add Resource
+                </button>
+                <button
+                  onClick={loadTutorResources}
+                  style={{
+                    background: "#3b82f6",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 20px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600"
+                  }}
+                >
+                  🔄 Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Add Resource Form */}
+            {showAddResourceForm && (
+              <div style={{
+                background: darkMode ? "#1f2937" : "#fff",
+                padding: "24px",
+                borderRadius: "12px",
+                marginBottom: "20px",
+                border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+              }}>
+                <h3 style={{ marginTop: 0, marginBottom: "20px", color: darkMode ? "#f9fafb" : "#111827" }}>
+                  Add New Resource
+                </h3>
+                <div style={{ display: "grid", gap: "16px" }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Title:</label>
+                    <input
+                      type="text"
+                      value={newResource.title}
+                      onChange={(e) => setNewResource({...newResource, title: e.target.value})}
+                      placeholder="Resource title"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                        fontSize: "16px",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#f9fafb" : "#111827"
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Description:</label>
+                    <textarea
+                      value={newResource.description}
+                      onChange={(e) => setNewResource({...newResource, description: e.target.value})}
+                      placeholder="Resource description"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                        fontSize: "16px",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#f9fafb" : "#111827",
+                        minHeight: "80px",
+                        resize: "vertical"
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>File URL:</label>
+                    <input
+                      type="text"
+                      value={newResource.file_url}
+                      onChange={(e) => setNewResource({...newResource, file_url: e.target.value})}
+                      placeholder="File URL or path"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                        fontSize: "16px",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#f9fafb" : "#111827"
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: darkMode ? "#f9fafb" : "#111827" }}>Category:</label>
+                    <select
+                      value={newResource.category}
+                      onChange={(e) => setNewResource({...newResource, category: e.target.value})}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: darkMode ? "1px solid #374151" : "1px solid #ddd",
+                        fontSize: "16px",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#f9fafb" : "#111827"
+                      }}
+                    >
+                      <option value="document">Document</option>
+                      <option value="video">Video</option>
+                      <option value="image">Image</option>
+                      <option value="audio">Audio</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={newResource.is_public}
+                        onChange={(e) => setNewResource({...newResource, is_public: e.target.checked})}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <span style={{ color: darkMode ? "#f9fafb" : "#111827" }}>Make public (visible to all students)</span>
+                    </label>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                  <button
+                    onClick={handleAddResource}
+                    style={{
+                      background: "#059669",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "12px 24px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Add Resource
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddResourceForm(false);
+                      setNewResource({ title: "", description: "", file_url: "", category: "document", is_public: false });
+                    }}
+                    style={{
+                      background: "#6b7280",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "12px 24px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {resourcesLoading ? (
+              <p>Loading resources...</p>
+            ) : tutorResources.length === 0 ? (
+              <div style={{
+                textAlign: "center",
+                padding: "40px",
+                background: darkMode ? "#1f2937" : "#fff",
+                borderRadius: "12px",
+                border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb"
+              }}>
+                <FileText size={48} style={{ color: darkMode ? "#9ca3af" : "#6b7280", marginBottom: "16px" }} />
+                <p style={{ fontSize: "18px", color: darkMode ? "#9ca3af" : "#6b7280", marginBottom: "8px" }}>
+                  No resources yet
+                </p>
+                <p style={{ color: darkMode ? "#6b7280" : "#9ca3af" }}>
+                  Add your first teaching resource to get started!
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
+                {tutorResources.map((resource) => (
+                  <div key={resource.id} style={{
+                    background: darkMode ? "#1f2937" : "#fff",
+                    border: darkMode ? "1px solid #374151" : "1px solid #e5e7eb",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                      <h3 style={{ margin: 0, fontSize: "16px", color: darkMode ? "#f9fafb" : "#111827" }}>{resource.title}</h3>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <span style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          background: resource.category === "document" ? "#3b82f6" : 
+                                       resource.category === "video" ? "#ef4444" : 
+                                       resource.category === "image" ? "#10b981" : "#6b7280",
+                          color: "white"
+                        }}>
+                          {resource.category}
+                        </span>
+                        {resource.is_public && (
+                          <span style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            background: "#059669",
+                            color: "white"
+                          }}>
+                            Public
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p style={{ color: darkMode ? "#9ca3af" : "#6b7280", marginBottom: "16px", fontSize: "14px" }}>
+                      {resource.description}
+                    </p>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "12px", color: darkMode ? "#6b7280" : "#9ca3af" }}>
+                        Added: {new Date(resource.created_at).toLocaleDateString()}
+                      </span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => window.open(resource.file_url, '_blank')}
+                          style={{
+                            background: "#3b82f6",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: "600"
+                          }}
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleDeleteResource(resource.id)}
+                          style={{
+                            background: "#ef4444",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: "600"
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2190,3 +4201,5 @@ export default function Dashboard({ isAdmin = false }) {
     </div>
   );
 }
+
+export default Dashboard;
