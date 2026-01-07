@@ -3,66 +3,118 @@ const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Configure multer
+/* =========================
+   MULTER CONFIG
+========================= */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    const uploadDir = 'uploads/';
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/png',
+      'image/jpeg'
+    ];
+    cb(null, allowed.includes(file.mimetype));
+  }
+});
 
+/* =========================
+   HELPERS
+========================= */
 async function resolveStudentId(studentIdentifier) {
-  if (studentIdentifier == null) return null;
+  if (!studentIdentifier) return null;
   const raw = String(studentIdentifier);
   const asNumber = Number(raw);
   if (Number.isInteger(asNumber) && String(asNumber) === raw) return asNumber;
+
   const email = raw.trim().toLowerCase();
   if (!email) return null;
-  const existing = await db.query('SELECT id FROM students WHERE email = ? LIMIT 1', [email]);
-  if (Array.isArray(existing) && existing.length > 0) return existing[0].id;
+
+  const existing = await db.query(
+    'SELECT id FROM students WHERE email = ? LIMIT 1',
+    [email]
+  );
+  if (existing.length > 0) return existing[0].id;
+
   const name = email.includes('@') ? email.split('@')[0] : 'Student';
-  const created = await db.query('INSERT INTO students (first_name, last_name, email) VALUES (?, ?, ?)', [name, '', email]);
+  const created = await db.query(
+    'INSERT INTO students (first_name, last_name, email) VALUES (?, ?, ?)',
+    [name, '', email]
+  );
   return created.insertId;
 }
 
+/* =========================
+   GET ASSIGNMENTS (STUDENT)
+========================= */
 router.get('/', async (req, res) => {
   const { studentId } = req.query;
+
   try {
-    const studentDbId = studentId ? await resolveStudentId(studentId) : null;
-    const sql = `
+    const studentDbId = studentId
+      ? await resolveStudentId(studentId)
+      : null;
+
+    // Fetch assignments
+    let assignments = await db.query(
+      `
       SELECT a.id, a.student_id, s.first_name AS student_first_name, s.last_name AS student_last_name,
-             a.title, a.description, a.due_date, a.status, a.created_at
+             a.title, a.description, a.due_date, a.status, a.file_path, a.created_at
       FROM assignments a
       LEFT JOIN students s ON a.student_id = s.id
       ${studentDbId ? 'WHERE a.student_id = ?' : ''}
       ORDER BY a.due_date IS NULL, a.due_date ASC, a.id DESC
-    `;
+      `,
+      studentDbId ? [studentDbId] : []
+    );
 
-    const results = await db.query(sql, studentDbId ? [studentDbId] : []);
-    res.json(results);
-  } catch (err) {
-    console.error('Error fetching assignments:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
-      return res.status(500).json({
-        error: 'DB_ERROR',
-        message: 'assignments table does not exist. Please create it in the SQL schema.'
-      });
+    // Fetch files for all assignments
+    const assignmentIds = assignments.map(a => a.id);
+    let files = [];
+    if (assignmentIds.length > 0) {
+      files = await db.query(
+        `SELECT id, assignment_id, file_path, uploaded_at
+         FROM assignment_files
+         WHERE assignment_id IN (${assignmentIds.join(',')})`
+      );
     }
+
+    // Attach files to assignments
+    assignments = assignments.map(a => {
+      a.files = files.filter(f => f.assignment_id === a.id);
+      return a;
+    });
+
+    res.json(assignments);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
+/* =========================
+   CREATE ASSIGNMENT
+========================= */
 router.post('/', async (req, res) => {
-  const { student_id, title, description, due_date, status } = req.body || {};
+  const { student_id, title, description, due_date, status } = req.body;
 
   const studentDbId = await resolveStudentId(student_id);
-
   if (!studentDbId || !title) {
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
@@ -71,88 +123,117 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const sql = `
-      INSERT INTO assignments (student_id, title, description, due_date, status)
-      VALUES (?, ?, ?, ?, ?)
-    `;
+    const result = await db.query(
+      `INSERT INTO assignments
+       (student_id, title, description, due_date, status)
+       VALUES (?, ?, ?, ?, ?)`,
+      [studentDbId, title, description || '', due_date || null, status || 'pending']
+    );
 
-    const result = await db.query(sql, [
-      studentDbId,
-      title.toString(),
-      (description || '').toString(),
-      due_date || null,
-      (status || 'pending').toString()
-    ]);
-
-    const fetch = await db.query(
-      'SELECT id, student_id, title, description, due_date, status, created_at FROM assignments WHERE id = ?',
+    const assignment = await db.query(
+      'SELECT * FROM assignments WHERE id = ?',
       [result.insertId]
     );
 
-    res.status(201).json(fetch[0]);
+    res.status(201).json(assignment[0]);
   } catch (err) {
-    console.error('Error creating assignment:', err);
-    if (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('no such table'))) {
-      return res.status(500).json({
-        error: 'DB_ERROR',
-        message: 'assignments table does not exist. Please create it in the SQL schema.'
-      });
-    }
+    console.error(err);
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
-router.put('/:id/submit', upload.single('file'), async (req, res) => {
+/* =========================
+   UPLOAD MULTIPLE FILES
+   (TEACHER)
+========================= */
+router.post('/:id/upload-files', upload.array('files', 10), async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'NO_FILES', message: 'No files uploaded' });
+  }
+
+  try {
+    const insertPromises = req.files.map(file => {
+      const filePath = file.path.replace(/\\/g, '/');
+      return db.query(
+        'INSERT INTO assignment_files (assignment_id, file_path) VALUES (?, ?)',
+        [id, filePath]
+      );
+    });
+
+    await Promise.all(insertPromises);
+
+    // Fetch all files for this assignment
+    const files = await db.query(
+      'SELECT id, file_path, uploaded_at FROM assignment_files WHERE assignment_id = ?',
+      [id]
+    );
+
+    res.json({ success: true, files });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'DB_ERROR', message: err.message });
+  }
+});
+
+/* =========================
+   SUBMIT ASSIGNMENT (STUDENT)
+========================= */
+router.put('/:id/submit', upload.array('files', 10), async (req, res) => {
   const { id } = req.params;
 
   try {
-    const checkSql = 'SELECT * FROM assignments WHERE id = ?';
-    const existing = await db.query(checkSql, [id]);
-    
+    const existing = await db.query('SELECT id FROM assignments WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
     }
 
-    let filePath = req.file ? req.file.path : null;
-    if (filePath) {
-      // Normalize path to use forward slashes for URLs
-      filePath = filePath.replace(/\\/g, '/');
-    }
-    
-    // Only update status and file_path
-    let sql = `
-      UPDATE assignments
-      SET status = 'submitted'
-    `;
-    const params = [];
-    
-    if (filePath) {
-      sql += `, file_path = ?`;
-      params.push(filePath);
-    }
-    
-    sql += ` WHERE id = ?`;
-    params.push(id);
+    // Handle multiple files
+    if (req.files && req.files.length > 0) {
+      // Insert all files into assignment_files table
+      const insertPromises = req.files.map(file => {
+        const filePath = file.path.replace(/\\/g, '/');
+        return db.query(
+          'INSERT INTO assignment_files (assignment_id, file_path, file_name, file_size, mime_type) VALUES (?, ?, ?, ?, ?)',
+          [id, filePath, file.originalname, file.size, file.mimetype]
+        );
+      });
+      await Promise.all(insertPromises);
 
-    await db.query(sql, params);
+      // Update assignment status to submitted
+      await db.query(
+        `UPDATE assignments
+         SET status = 'submitted'
+         WHERE id = ?`,
+        [id]
+      );
+    } else {
+      // No files submitted, just update status
+      await db.query(
+        `UPDATE assignments
+         SET status = 'submitted'
+         WHERE id = ?`,
+        [id]
+      );
+    }
 
-    const fetch = await db.query(
-      'SELECT id, student_id, title, description, due_date, status, file_path, created_at FROM assignments WHERE id = ?',
-      [id]
-    );
-    res.json(fetch[0]);
+    const updated = await db.query('SELECT * FROM assignments WHERE id = ?', [id]);
+    res.json(updated[0]);
   } catch (err) {
-    console.error('Error submitting assignment:', err);
+    console.error(err);
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
+/* =========================
+   UPDATE ASSIGNMENT
+========================= */
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { student_id, title, description, due_date, status } = req.body || {};
+  const { student_id, title, description, due_date, status } = req.body;
 
   const studentDbId = await resolveStudentId(student_id);
-
   if (!studentDbId || !title) {
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
@@ -161,42 +242,32 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const sql = `
-      UPDATE assignments
-      SET student_id = ?, title = ?, description = ?, due_date = ?, status = ?
-      WHERE id = ?
-    `;
-
-    await db.query(sql, [
-      studentDbId,
-      title.toString(),
-      (description || '').toString(),
-      due_date || null,
-      (status || 'pending').toString(),
-      id
-    ]);
-
-    const fetch = await db.query(
-      'SELECT id, student_id, title, description, due_date, status, file_path, created_at FROM assignments WHERE id = ?',
-      [id]
+    await db.query(
+      `UPDATE assignments
+       SET student_id = ?, title = ?, description = ?, due_date = ?, status = ?
+       WHERE id = ?`,
+      [studentDbId, title, description || '', due_date || null, status || 'pending', id]
     );
-    if (fetch.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
-    res.json(fetch[0]);
+
+    const updated = await db.query('SELECT * FROM assignments WHERE id = ?', [id]);
+    res.json(updated[0]);
   } catch (err) {
-    console.error('Error updating assignment:', err);
+    console.error(err);
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });
 
+/* =========================
+   DELETE ASSIGNMENT
+========================= */
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
+
   try {
-    const exists = await db.query('SELECT id FROM assignments WHERE id = ?', [id]);
-    if (exists.length === 0) return res.status(404).json({ error: 'NOT_FOUND', message: 'Assignment not found' });
     await db.query('DELETE FROM assignments WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
-    console.error('Error deleting assignment:', err);
+    console.error(err);
     res.status(500).json({ error: 'DB_ERROR', message: err.message });
   }
 });

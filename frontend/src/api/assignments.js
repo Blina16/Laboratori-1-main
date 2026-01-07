@@ -124,25 +124,7 @@ export const updateGrade = (id, data) =>
 export const deleteGrade = (id) =>
   api.delete(`/api/grades/${id}`);
 
-// ===============================
-// PAYMENTS
-// ===============================
 
-export const fetchPaymentsByStudent = (studentId) =>
-  api.get(`/api/payments/student/${studentId}`);
-
-export const createPayment = (data) =>
-  api.post("/api/payments", data);
-
-export const updatePayment = (id, data) =>
-  api.put(`/api/payments/${id}`, data);
-
-export const deletePayment = (id) =>
-  api.delete(`/api/payments/${id}`);
-
-// ===============================
-// BOOKINGS
-// ===============================
 
 export const getStudentBookings = (studentId) =>
   api.get(`/api/bookings/student/${studentId}`);
@@ -177,10 +159,12 @@ export const createAssignment = (data) =>
 export const updateAssignment = (id, data) =>
   api.put(`/api/assignments/${id}`, data);
 
-export const submitAssignment = (id, file) => {
-  if (file) {
+export const submitAssignment = (id, files) => {
+  if (files && files.length > 0) {
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((file, index) => {
+      formData.append(`files`, file);
+    });
     // When sending FormData, let the browser set Content-Type (it adds boundary)
     return fetch(`${API_BASE}/api/assignments/${id}/submit`, {
       method: "PUT",
