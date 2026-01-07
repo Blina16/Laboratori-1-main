@@ -67,12 +67,11 @@ app.post("/grades", (req, res) => {
   const sql =
     "INSERT INTO grades (student_id, course_id, grade, comment) VALUES (?, ?, ?, ?)";
 
-  db.query(sql, [student_id, course_id, grade, comment], (err) => {
+  db.query(sql, [student_id, course_id, grade, comment], (err, results) => {
     if (err) return res.status(500).json({ message: "Failed to add grade" });
 
     res.status(201).json({ message: "Grade added successfully" });
   });
 });
-
 
 module.exports = app;
